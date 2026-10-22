@@ -10,7 +10,7 @@
 --        - Pergunte ao assistente, ou
 --        - Em Java: new BCryptPasswordEncoder(10).encode("minha-senha")
 --
--- Senha atual deste seed: admin
+-- Senha atual deste seed: 1234
 -- ============================================================
 CREATE TABLE user(
     id BINARY(16) NOT NULL,
@@ -22,4 +22,4 @@ CREATE TABLE user(
 
 INSERT INTO user (id, username, password)
 VALUES (UNHEX(REPLACE(UUID(), '-', '')), 'admin',
-        '$2a$10$K.HAACa0KnqbEG.Ym6FmvuP/eqwNxv.b9/iD4u7jbTXsPoti3TLaC');
+        '$2a$10$m2YnMvcAsogtng2AxYT2kOXGi.rXe95kzmkFRMi4OV5Ab6OSo6ESu');

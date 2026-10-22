@@ -5,7 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest(properties = {
 		"spring.profiles.active=test",
-		"spring.datasource.url=jdbc:mysql://localhost:3306/project_test?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true",
+		"spring.datasource.url=jdbc:mysql://localhost:3306/project_context_test_5?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true",
 		"spring.datasource.username=root",
 		"spring.datasource.password=1234",
 		"spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver",

@@ -16,6 +16,15 @@ public record ProductRequestDTO(
         BigDecimal price,
 
         @NotNull(message = "A categoria é obrigatória")
-        UUID category_id
+        UUID category_id,
+
+        Integer stock_quantity,
+
+        BigDecimal cost_price,
+
+        Boolean active
 ) {
+    public ProductRequestDTO(String name, BigDecimal price, UUID category_id) {
+        this(name, price, category_id, 0, null, true);
+    }
 }

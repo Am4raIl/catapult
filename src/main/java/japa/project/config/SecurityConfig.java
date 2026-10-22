@@ -28,21 +28,18 @@ public class SecurityConfig {
                                            SecurityContextRepository securityContextRepository)
             throws Exception {
         http
-                // API JSON/multipart consumida por clientes que não enviam token CSRF;
-                // o cookie de sessão JSESSIONID usa SameSite=Lax por padrão nos browsers
                 .csrf(AbstractHttpConfigurer::disable)
                 .securityContext(securityContext ->
                         securityContext.securityContextRepository(securityContextRepository))
                 .authorizeHttpRequests(auth -> auth
-                        // Toda requisição GET é pública
-                        .requestMatchers(HttpMethod.GET, "/**").permitAll()
-                        // Login e logout não exigem sessão prévia
                         .requestMatchers("/api/login", "/api/logout").permitAll()
-                        // Qualquer outro método (POST, PUT, DELETE...) exige autenticação
+                        .requestMatchers(HttpMethod.GET, "/api/auth/check").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/dashboard/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/**").permitAll()
+                        .requestMatchers("/api/dashboard/**", "/api/auth/check").authenticated()
                         .anyRequest().authenticated())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                // Sem formLogin: não autenticado recebe 401 com corpo JSON explicando o que fazer
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
                     response.setContentType("application/json;charset=UTF-8");

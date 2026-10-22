@@ -23,7 +23,10 @@ public class ProductFactory {
         product.setPrice(BigDecimal.valueOf(faker.number().numberBetween(100, 9999900)).movePointLeft(2));
         product.setCategory(category);
         product.setPhoto(generateDummyImage());
-
+        product.setStockQuantity(faker.number().numberBetween(0, 100));
+        BigDecimal costPrice = product.getPrice().multiply(BigDecimal.valueOf(0.6 + Math.random() * 0.3));
+        product.setCostPrice(costPrice.setScale(2, java.math.RoundingMode.HALF_UP));
+        product.setActive(Boolean.TRUE);
         return product;
     }
 

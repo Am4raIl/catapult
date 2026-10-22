@@ -3,6 +3,7 @@ package japa.project.controller;
 import jakarta.validation.Valid;
 import japa.project.dto.ProductRequestDTO;
 import japa.project.dto.ProductResponseDTO;
+import japa.project.dto.UpdateStockRequestDTO;
 import japa.project.service.ProductService;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.UUID;
 
@@ -31,6 +34,7 @@ import java.util.UUID;
 @RequestMapping("/api/products")
 public class ProductController {
     private final ProductService service;
+
     public ProductController(ProductService service) {
         this.service = service;
     }
@@ -38,8 +42,13 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<Page<ProductResponseDTO>> index(
             @RequestParam(required = false) String nome,
+            @RequestParam(required = false) UUID category_id,
+            @RequestParam(required = false) BigDecimal min_price,
+            @RequestParam(required = false) BigDecimal max_price,
+            @RequestParam(required = false) Boolean has_photo,
+            @RequestParam(required = false) String stock_status,
             @PageableDefault(size = 10, sort = "name") Pageable pageable) {
-        return ResponseEntity.ok(service.listAll(nome, pageable)); 
+        return ResponseEntity.ok(service.listAll(nome, category_id, min_price, max_price, has_photo, stock_status, pageable));
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -92,6 +101,13 @@ public class ProductController {
             @RequestPart(value = "image", required = false) MultipartFile image) {
         MultipartFile file = (photo != null && !photo.isEmpty()) ? photo : image;
         return ResponseEntity.ok(service.update(id, request, file));
+    }
+
+    @PatchMapping("/{id}/stock")
+    public ResponseEntity<ProductResponseDTO> updateStock(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateStockRequestDTO request) {
+        return ResponseEntity.ok(service.updateStock(id, request.stock_quantity()));
     }
 
     @DeleteMapping("/{id}")

@@ -1,0 +1,16 @@
+info:
+  name: GET Category
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/categories/69de7afa-c063-45c4-978d-d653e0a682d3"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

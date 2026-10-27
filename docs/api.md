@@ -1,55 +1,124 @@
-# Especificação do Backend — API de Categorias e Produtos
+# Catapult — guia completo do backend para implementação do frontend
+
+> Especificação produzida a partir da implementação atual. Este documento descreve o contrato que o frontend pode efetivamente consumir, inclusive comportamentos que não ficam evidentes apenas pelas rotas.
 
 ## 1. Visão geral
 
-Backend REST em **Spring Boot 4.1.1 / Java 21**, banco **MySQL/MariaDB** com migrações **Flyway**.
-Gerencia **Categorias** (1:N) **Produtos**, com upload de imagem/PDF por produto e **autenticação por sessão**.
-Não há API versionada, Swagger/OpenAPI, CORS configurado nem endpoints de usuário.
+O Catapult é uma API REST de catálogo e estoque construída com Java 21, Spring Boot 4.1.1, Spring MVC, Spring Security, Spring Data JPA/Hibernate, MySQL/MariaDB e Flyway. Fotos e PDFs de produtos são armazenados no sistema de arquivos local.
 
-- **Base URL local:** `http://localhost:8080`
-- **Prefixo das rotas:** `/api`
-- **Formato:** JSON (exceto multipart e download de arquivo)
-- **Porta:** 8080 (padrão do Spring Boot, não customizada)
-- **Datas:** não existem campos de data nas respostas.
+O domínio possui:
 
-## 2. Autenticação e sessão (MUITO IMPORTANTE)
+- `Category`: categoria com vários produtos;
+- `Product`: produto pertencente obrigatoriamente a uma categoria;
+- `User`: usuário usado apenas para autenticação; não há CRUD público de usuários.
 
-- Login por **cookie de sessão** (`JSESSIONID`, HttpOnly). **Não existe token JWT nem header Authorization.**
-- **CSRF está desabilitado.** Não é necessário enviar token CSRF.
-- **Todas as requisições GET são públicas.**
-- **POST, PUT e DELETE exigem sessão autenticada** (exceto `/api/login` e `/api/logout`).
-- Sessão em memória: reiniciar o backend invalida todos os logins. Timeout padrão de inatividade: ~30 min.
-- **CORS NÃO está configurado.** O frontend deve rodar na mesma origem (ex.: proxy do Vite/Next de `/api` para `http://localhost:8080`) **ou** será necessário adicionar CORS no backend. Com proxy/same-origin, envie as requisições com `credentials: "include"` (fetch) / `withCredentials: true` (axios).
+Características gerais:
 
-### 2.1 POST /api/login
-Autentica e cria a sessão (responde com `Set-Cookie: JSESSIONID=...`).
+- URL local: `http://localhost:8080`;
+- prefixo: `/api`;
+- sem versionamento da API;
+- IDs em UUID;
+- valores monetários em `BigDecimal`, expostos como números JSON;
+- datas `LocalDateTime` em ISO-8601, sem fuso horário;
+- sem Swagger/OpenAPI e sem CORS configurado;
+- autenticação por sessão HTTP/cookie `JSESSIONID`, não JWT.
 
-Request:
-```json
-{ "username": "admin", "password": "sua-senha" }
+## 2. Mapa dos endpoints
+
+| Método | Endpoint | Auth | Sucesso |
+|---|---|---:|---|
+| `POST` | `/api/login` | Não | `200` dados do login |
+| `POST` | `/api/logout` | Não | `200` mensagem |
+| `GET` | `/api/auth/check` | Sim | `200` usuário da sessão |
+| `GET` | `/api/categories` | Não | `200` categorias |
+| `POST` | `/api/categories` | Sim | `201` categoria criada |
+| `GET` | `/api/categories/{id}` | Não | `200` categoria |
+| `PUT` | `/api/categories/{id}` | Sim | `200` categoria atualizada |
+| `DELETE` | `/api/categories/{id}` | Sim | `204` sem corpo |
+| `GET` | `/api/products` | Não | `200` página de produtos |
+| `POST` | `/api/products` | Sim | `201` produto criado |
+| `GET` | `/api/products/{id}` | Não | `200` produto |
+| `GET` | `/api/products/{id}/photo` | Não | `200` arquivo binário |
+| `GET` | `/api/products/{id}/image` | Não | Alias de `/photo` |
+| `PUT` | `/api/products/{id}` | Sim | `200` produto atualizado |
+| `PATCH` | `/api/products/{id}/stock` | Sim | `200` produto atualizado |
+| `DELETE` | `/api/products/{id}` | Sim | `204` sem corpo |
+| `GET` | `/api/dashboard/summary` | Sim | `200` indicadores |
+| `GET` | `/api/dashboard/products-by-category` | Sim | `200` agrupamento |
+| `GET` | `/api/dashboard/price-ranges` | Sim | `200` faixas de preço |
+
+Todos os endpoints de escrita exigem sessão, exceto login/logout. GETs de categorias, produtos e arquivos são públicos. GETs de autenticação e dashboard são protegidos.
+
+## 3. Autenticação por sessão
+
+### 3.1 Funcionamento
+
+O cliente envia usuário e senha a `POST /api/login`. Em sucesso, o Spring cria uma sessão e responde com algo semelhante a:
+
+```http
+Set-Cookie: JSESSIONID=ABC123...; Path=/; HttpOnly
 ```
 
-Respostas:
-- `200 OK`
+O browser conserva e reenvia o cookie. Não existe token para armazenar em `localStorage`.
+
+- política de sessão: `IF_REQUIRED`;
+- contexto de segurança salvo na sessão HTTP;
+- senha no banco com BCrypt;
+- autoridade interna fixa `ROLE_USER`;
+- sem papéis/permissões diferentes;
+- CSRF desabilitado, sem token CSRF;
+- reiniciar o servidor normalmente invalida sessões em memória;
+- timeout não configurado pelo projeto, usando o padrão do servidor/ambiente.
+
+### 3.2 Login
+
+```http
+POST /api/login
+Content-Type: application/json
+```
+
+```json
+{ "username": "admin", "password": "admin" }
+```
+
+Ambos são strings obrigatórias e não podem estar vazios/em branco.
+
+Resposta `200`:
+
 ```json
 { "message": "Login realizado com sucesso!", "username": "admin" }
 ```
-- `401 Unauthorized` — credenciais inválidas (corpo padrão de erro do Spring, ver seção 5)
-- `400 Bad Request` — `username` ou `password` em branco
 
-> O usuário padrão é `admin`, criado pela migração V3. A **senha** é definida no hash BCrypt da migration (pode ter sido alterada pelo dono do projeto — peça as credenciais a ele).
+Falhas: `400` para body/campos inválidos e `401` para credenciais incorretas.
 
-### 2.2 POST /api/logout
-Encerra a sessão. Pode ser chamado sem sessão (idempotente).
+### 3.3 Verificar sessão
 
-- `200 OK`
+```http
+GET /api/auth/check
+Cookie: JSESSIONID=...
+```
+
+```json
+{ "authenticated": true, "username": "admin" }
+```
+
+Sem sessão retorna `401`. Use este endpoint para restaurar o estado de autenticação após recarregar o frontend.
+
+### 3.4 Logout
+
+```http
+POST /api/logout
+Cookie: JSESSIONID=...
+```
+
 ```json
 { "message": "Logout realizado com sucesso!" }
 ```
-- Após o logout, qualquer POST/PUT/DELETE com o cookie antigo retorna `401`.
 
-### 2.3 Resposta para acesso não autenticado (401)
-Formato **customizado e fixo** (UTF-8):
+Retorna `200`, invalida a sessão e limpa a autenticação. Também é permitido sem sessão, podendo ser tratado como idempotente.
+
+### 3.5 Rota protegida sem sessão
+
 ```json
 {
   "status": 401,
@@ -57,224 +126,687 @@ Formato **customizado e fixo** (UTF-8):
   "message": "Autenticação necessária. Faça login para continuar."
 }
 ```
-Aplicado a qualquer rota protegida sem sessão válida.
 
-## 3. Modelo de dados (respostas)
+### 3.6 Cookies e CORS
 
-### 3.1 CategoryResponseDTO
-```json
-{
-  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "name": "Eletrônicos",
-  "products": [
-    {
-      "id": "uuid",
-      "name": "Fone Bluetooth",
-      "price": 199.90,
-      "photo": "/api/products/{id}/photo"
-    }
-  ]
+Não há configuração de CORS. Prefira mesma origem ou proxy de desenvolvimento:
+
+```text
+browser -> http://localhost:3000/api/... -> proxy -> http://localhost:8080/api/...
+```
+
+```ts
+fetch('/api/auth/check', { credentials: 'include' });
+
+const api = axios.create({ baseURL: '/api', withCredentials: true });
+```
+
+Para origens diferentes, CORS e política do cookie precisarão ser configurados no backend. `credentials: 'include'` sozinho não resolve a ausência de CORS.
+
+## 4. Contratos TypeScript sugeridos
+
+```ts
+type UUID = string;
+
+interface LoginRequest { username: string; password: string }
+interface LoginResponse { message: string; username: string }
+interface AuthCheckResponse { authenticated: true; username: string }
+interface CategorySummary { id: UUID; name: string }
+
+interface ProductSummary {
+  id: UUID;
+  name: string;
+  price: number;
+  photo: string | null;
+}
+
+interface Category {
+  id: UUID;
+  name: string;
+  products: ProductSummary[];
+}
+
+interface Product {
+  id: UUID;
+  name: string;
+  price: number;
+  category: CategorySummary;
+  photo: string | null;
+  stock_quantity: number;
+  cost_price: number | null;
+  created_at: string;
+  updated_at: string;
+  active: boolean;
+}
+
+interface ProductInput {
+  name: string;
+  price: number;
+  category_id: UUID;
+  stock_quantity?: number | null;
+  cost_price?: number | null;
+  active?: boolean | null;
+}
+
+interface SpringSort { sorted: boolean; unsorted: boolean; empty: boolean }
+
+interface SpringPage<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+  size: number;
+  number: number;
+  numberOfElements: number;
+  empty: boolean;
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+    sort: SpringSort;
+  };
+  sort: SpringSort;
 }
 ```
 
-### 3.2 CategorySummaryResponseDTO
-```json
-{ "id": "uuid", "name": "Eletrônicos" }
+Notas:
+
+- `photo` é URL relativa da API, não nome físico;
+- datas não têm offset, por exemplo `2026-10-26T14:35:12.123456`;
+- formate valores monetários no frontend; JSON não garante zeros finais;
+- `products` sempre é array;
+- não há ordem garantida para categorias, seus produtos ou agrupamentos do dashboard.
+
+## 5. Categorias
+
+### 5.1 Listar
+
+```http
+GET /api/categories
 ```
 
-### 3.3 ProductResponseDTO
-```json
-{
-  "id": "uuid",
-  "name": "Fone Bluetooth",
-  "price": 199.90,
-  "category": { "id": "uuid", "name": "Eletrônicos" },
-  "photo": "/api/products/{id}/photo"
-}
-```
-- `photo` é **uma URL relativa** (não é nome de arquivo). Prefixe com a base URL para exibir (`http://localhost:8080` + `photo`).
-- `photo` pode ser `null` (produto sem imagem/PDF).
-- Preço é número decimal (`BigDecimal`), sempre com 2 casas vindas do banco quando criado pelo seed; envie como número no JSON (não string).
+Público, sem filtros/paginação. Cada categoria inclui todos os produtos resumidos:
 
-### 3.4 Página de produtos (Spring Data `Page`)
-`GET /api/products` retorna um objeto de paginação:
+```json
+[
+  {
+    "id": "d9562726-42f7-4d6f-b9ea-528d2bd78284",
+    "name": "Eletrônicos",
+    "products": [
+      {
+        "id": "fcbeb855-36c5-4c65-af54-1627fd47d79a",
+        "name": "Fone Bluetooth",
+        "price": 199.90,
+        "photo": "/api/products/fcbeb855-36c5-4c65-af54-1627fd47d79a/photo"
+      }
+    ]
+  }
+]
+```
+
+Não há variante “sem produtos”; a resposta pode crescer com o catálogo.
+
+### 5.2 Obter
+
+```http
+GET /api/categories/{id}
+```
+
+Público. Retorna `200` com o mesmo contrato, `404` se não existir e `400` para UUID malformado.
+
+### 5.3 Criar
+
+```http
+POST /api/categories
+Content-Type: application/json
+Cookie: JSESSIONID=...
+```
+
+```json
+{ "name": "Eletrônicos" }
+```
+
+- `name` obrigatório e não branco;
+- banco aceita até 255 caracteres, mas não há `@Size` no DTO;
+- nomes repetidos são permitidos.
+
+Resposta `201`, `Location: /api/categories/{id}`:
+
+```json
+{ "id": "d9562726-42f7-4d6f-b9ea-528d2bd78284", "name": "Eletrônicos", "products": [] }
+```
+
+### 5.4 Atualizar
+
+```http
+PUT /api/categories/{id}
+Content-Type: application/json
+Cookie: JSESSIONID=...
+```
+
+```json
+{ "name": "Eletrônicos e acessórios" }
+```
+
+Retorna `200` com categoria completa, `400` para entrada inválida e `404` se não existir.
+
+### 5.5 Excluir
+
+```http
+DELETE /api/categories/{id}
+Cookie: JSESSIONID=...
+```
+
+- `204`: sucesso, sem body;
+- `404`: inexistente;
+- `409`: possui produtos vinculados.
+
+Não há cascata. Produtos devem ser removidos ou realocados antes.
+
+## 6. Produtos
+
+### 6.1 Listar, filtrar, ordenar e paginar
+
+```http
+GET /api/products
+```
+
+Público; retorna `Page<Product>`.
+
+#### Filtros
+
+| Query param | Tipo | Comportamento |
+|---|---|---|
+| `nome` | string | contém, sem diferenciar caixa |
+| `category_id` | UUID | categoria exata |
+| `min_price` | decimal | preço `>=` valor |
+| `max_price` | decimal | preço `<=` valor |
+| `has_photo` | boolean | `true`: foto preenchida; `false`: nula |
+| `stock_status` | string | `OUT_OF_STOCK`, `LOW_STOCK`, `IN_STOCK` |
+
+São opcionais e combinados com `AND`.
+
+| Status | Condição |
+|---|---|
+| `OUT_OF_STOCK` | estoque `== 0` |
+| `LOW_STOCK` | estoque `> 0 && <= 5` |
+| `IN_STOCK` | estoque `> 5` |
+
+O status ignora caixa/espaços nas pontas. Valor desconhecido é atualmente ignorado, sem erro; valide os três valores no frontend.
+
+- `nome` vazio/branco é ignorado;
+- `has_photo` verifica a coluna, não o arquivo físico;
+- não há validação de `min_price <= max_price`;
+- UUID/número/boolean malformado gera `400`.
+
+#### Paginação e sort
+
+| Param | Padrão | Nota |
+|---|---|---|
+| `page` | `0` | zero-based |
+| `size` | `10` | itens por página |
+| `sort` | `name,asc` | propriedade Java/direção |
+
+```text
+GET /api/products?page=0&size=20
+GET /api/products?nome=fone&sort=price,desc
+GET /api/products?category_id={uuid}&min_price=10&max_price=200
+GET /api/products?has_photo=false&stock_status=LOW_STOCK
+GET /api/products?sort=active,desc&sort=name,asc
+```
+
+Sorts úteis: `name`, `price`, `stockQuantity`, `costPrice`, `createdAt`, `updatedAt`, `active`, `id`. Em sort use propriedade Java `camelCase` (`stockQuantity`), não JSON `snake_case`. Propriedade inexistente pode causar erro; use allowlist.
+
+Resposta abreviada:
+
 ```json
 {
-  "content": [ /* ProductResponseDTO[] */ ],
-  "pageable": { "pageNumber": 0, "pageSize": 10, "offset": 0, "paged": true, "unpaged": false },
-  "totalElements": 20,
-  "totalPages": 2,
-  "last": false,
+  "content": [{
+    "id": "fcbeb855-36c5-4c65-af54-1627fd47d79a",
+    "name": "Fone Bluetooth",
+    "price": 199.90,
+    "category": { "id": "d9562726-42f7-4d6f-b9ea-528d2bd78284", "name": "Eletrônicos" },
+    "photo": "/api/products/fcbeb855-36c5-4c65-af54-1627fd47d79a/photo",
+    "stock_quantity": 8,
+    "cost_price": 120.00,
+    "created_at": "2026-10-26T14:35:12.123456",
+    "updated_at": "2026-10-26T14:35:12.123456",
+    "active": true
+  }],
+  "pageable": {
+    "pageNumber": 0, "pageSize": 10, "offset": 0,
+    "paged": true, "unpaged": false,
+    "sort": { "sorted": true, "unsorted": false, "empty": false }
+  },
+  "totalElements": 1,
+  "totalPages": 1,
+  "last": true,
   "first": true,
   "size": 10,
   "number": 0,
-  "numberOfElements": 10,
+  "numberOfElements": 1,
   "sort": { "sorted": true, "unsorted": false, "empty": false },
   "empty": false
 }
 ```
-Campos estáveis para o frontend: `content`, `totalElements`, `totalPages`, `number` (página atual, **0-based**), `size`, `first`, `last`, `numberOfElements`, `empty`.
 
-## 4. Endpoints
+### 6.2 Obter
 
-### 4.1 Categorias — `/api/categories`
-
-| Método | Rota | Auth | Sucesso | Erros |
-|---|---|---|---|---|
-| GET | `/api/categories` | pública | 200 `CategoryResponseDTO[]` | — |
-| POST | `/api/categories` | **sim** | 201 `CategoryResponseDTO` + header `Location` | 400 |
-| GET | `/api/categories/{id}` | pública | 200 `CategoryResponseDTO` | 404 |
-| PUT | `/api/categories/{id}` | **sim** | 200 `CategoryResponseDTO` | 400, 404 |
-| DELETE | `/api/categories/{id}` | **sim** | 204 (sem corpo) | 404, 409 |
-
-**POST/PUT body** (ambos):
-```json
-{ "name": "Eletrônicos" }
+```http
+GET /api/products/{id}
 ```
-Validação: `name` obrigatório e não branco (`@NotBlank`, máx. 255 chars no banco).
 
-**DELETE — regra de negócio:** retorna `409 Conflict` se a categoria possuir produtos vinculados.
+Público. Retorna `200`, `404` se inexistente e `400` para UUID malformado.
 
-Exemplo POST:
-```
-POST /api/categories
+### 6.3 Criar com JSON
+
+```http
+POST /api/products
 Content-Type: application/json
-
-{ "name": "Eletrônicos" }
-→ 201 Created
-Location: /api/categories/{id}
-{ "id": "...", "name": "Eletrônicos", "products": [] }
+Cookie: JSESSIONID=...
 ```
 
-### 4.2 Produtos — `/api/products`
-
-| Método | Rota | Auth | Sucesso | Erros |
-|---|---|---|---|---|
-| GET | `/api/products` | pública | 200 `Page<ProductResponseDTO>` | 400 (query inválida) |
-| POST | `/api/products` (JSON) | **sim** | 201 `ProductResponseDTO` + `Location` | 400, 404 (categoria) |
-| POST | `/api/products` (multipart) | **sim** | 201 `ProductResponseDTO` + `Location` | 400, 404, 413/500 (arquivo) |
-| GET | `/api/products/{id}` | pública | 200 `ProductResponseDTO` | 404 |
-| GET | `/api/products/{id}/photo` (ou `/image`) | pública | 200 binário | 404 |
-| PUT | `/api/products/{id}` (JSON) | **sim** | 200 `ProductResponseDTO` | 400, 404 |
-| PUT | `/api/products/{id}` (multipart) | **sim** | 200 `ProductResponseDTO` | 400, 404 |
-| DELETE | `/api/products/{id}` | **sim** | 204 (sem corpo) | 404 |
-
-#### GET /api/products — filtros e paginação
-Query params:
-- `nome` (opcional): filtro **contém, ignorando maiúsculas/minúsculas**. Vazio/ausente = todos.
-- `page` (opcional, padrão `0`, **0-based**)
-- `size` (opcional, padrão `10`)
-- `sort` (opcional, padrão `name,asc`): ex. `sort=price,desc`, `sort=name,asc`. Aceita múltiplos `sort`.
-
-Exemplos:
-```
-GET /api/products?nome=fone&page=0&size=10&sort=name,asc
-GET /api/products?sort=price,desc
-```
-
-#### POST JSON
 ```json
 {
   "name": "Fone Bluetooth",
   "price": 199.90,
-  "category_id": "uuid-da-categoria"
+  "category_id": "d9562726-42f7-4d6f-b9ea-528d2bd78284",
+  "stock_quantity": 8,
+  "cost_price": 120.00,
+  "active": true
 }
 ```
-- `name`: obrigatório (`@NotBlank`)
-- `price`: obrigatório e `>= 0.01` (`@NotNull`, `@DecimalMin("0.01")`)
-- `category_id`: obrigatório (`@NotNull`) e a categoria deve existir (senão 404)
 
-#### POST multipart (com arquivo)
-`Content-Type: multipart/form-data`. Partes:
-- `name` (texto)
-- `price` (texto decimal, ex. `199.90`)
-- `category_id` (texto UUID)
-- `photo` **ou** `image` (arquivo). Se ambos vierem, `photo` tem prioridade.
+| Campo | Obrigatório | Criação |
+|---|---:|---|
+| `name` | Sim | não branco |
+| `price` | Sim | `>= 0.01` |
+| `category_id` | Sim | categoria existente |
+| `stock_quantity` | Não | omitido/`null` vira `0` |
+| `cost_price` | Não | omitido fica `null` |
+| `active` | Não | omitido/`null` vira `true` |
 
-Restrições do arquivo:
-- Extensões aceitas: `png`, `jpg`, `jpeg`, `gif`, `webp`, `pdf`
-- Content-Type aceito: `image/*` **ou** `application/pdf`
-- Tamanho máximo: **5 MB por arquivo** / **6 MB por requisição**
-- Nome do arquivo no servidor é gerado (UUID); o original não é preservado.
-- Erros: extensão inválida → 400; tipo inválido → 400.
+O DTO completo não valida estoque nem custo negativos; bloqueie-os no frontend. Retorna `201`, `Location` e produto. Falhas: `400`, `401`, `404` para categoria.
 
-Exemplo cURL:
-```bash
-curl -b cookies.txt -X POST http://localhost:8080/api/products \
-  -F "name=Fone Bluetooth" -F "price=199.90" \
-  -F "category_id=$CATEGORY_ID" \
-  -F "photo=@arquivo.png;type=image/png"
+### 6.4 Criar com multipart
+
+| Parte | Tipo | Obrigatória |
+|---|---|---:|
+| `name` | texto | Sim |
+| `price` | texto decimal | Sim |
+| `category_id` | texto UUID | Sim |
+| `stock_quantity` | texto inteiro | Não |
+| `cost_price` | texto decimal | Não |
+| `active` | texto booleano | Não |
+| `photo` | arquivo | Não |
+| `image` | arquivo | Não; alias de `photo` |
+
+Se os dois aliases forem enviados, `photo` não vazio tem prioridade.
+
+```ts
+const form = new FormData();
+form.append('name', values.name);
+form.append('price', String(values.price));
+form.append('category_id', values.categoryId);
+form.append('stock_quantity', String(values.stockQuantity));
+form.append('cost_price', String(values.costPrice));
+form.append('active', String(values.active));
+if (values.file) form.append('photo', values.file);
+
+await fetch('/api/products', {
+  method: 'POST', credentials: 'include', body: form,
+});
 ```
 
-#### GET /api/products/{id}/photo (alias: `/image`)
-- Retorna o binário salvo (imagem **ou PDF**).
-- `Content-Type` derivado da extensão: `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `application/pdf`; desconhecido → `application/octet-stream`.
-- `404` se o produto não existe, não possui arquivo ou o arquivo sumiu do disco.
+Não defina `Content-Type` manualmente para `FormData`; o browser cria o boundary.
 
-#### PUT JSON — ATENÇÃO
+Arquivo:
+
+- máximo 5 MB por arquivo e 6 MB por request;
+- extensões `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.pdf`;
+- MIME deve começar com `image/` ou ser `application/pdf`;
+- MIME e extensão precisam ser aceitos;
+- conteúdo real não é inspecionado profundamente;
+- nome final é UUID;
+- armazenamento em `uploads/products`, relativo ao diretório de execução.
+
+Erros: `400` para MIME/extensão, erro de multipart para limite, `500` para falha de escrita.
+
+### 6.5 Atualizar com PUT
+
+Aceita `application/json` ou `multipart/form-data`. `name`, `price` e `category_id` continuam obrigatórios; não é PATCH geral.
+
+| Campo | Preenchido | Omitido/`null` |
+|---|---|---|
+| `stock_quantity` | substitui | preserva |
+| `cost_price` | substitui | preserva; não pode limpar para `null` |
+| `active` | substitui | preserva |
+| `photo`/`image` | troca e apaga antigo | **remove foto atual** |
+
+Tanto PUT JSON quanto multipart sem arquivo apagam a foto atual. Para preservá-la, a API exige reenviar o arquivo. Retorna `200`; erros `400`, `401`, `404` de produto/categoria.
+
+### 6.6 Atualizar apenas estoque
+
+```http
+PATCH /api/products/{id}/stock
+Content-Type: application/json
+Cookie: JSESSIONID=...
+```
+
 ```json
-{ "name": "Novo nome", "price": 99.90, "category_id": "uuid" }
+{ "stock_quantity": 7 }
 ```
-**Sem envio de arquivo, a imagem/PDF atual é REMOVIDA** (`photo` vira `null`). Use o PUT multipart para trocar a imagem; para preservá-la, reenvie o arquivo.
 
-#### PUT multipart
-Mesmos campos do POST multipart. Se um novo arquivo for enviado, o antigo é apagado do disco. Se nenhum arquivo for enviado, a imagem é removida (mesmo comportamento do PUT JSON).
+Obrigatório, inteiro e `>= 0`. Retorna o produto completo (`200`), ou `400`, `401`, `404`.
 
-#### DELETE
-Remove o produto, faz `flush` e apaga o arquivo do disco. `404` se não existir.
+### 6.7 Excluir
 
-## 5. Formato padrão de erros
+```http
+DELETE /api/products/{id}
+Cookie: JSESSIONID=...
+```
 
-Não há `@ControllerAdvice`. Erros de status (404, 409, etc.) usam o formato padrão do Spring:
+Exclui registro e depois arquivo associado. Retorna `204`, `401`, `404`, ou possível `500` se o arquivo não puder ser removido.
+
+### 6.8 Foto/PDF
+
+```http
+GET /api/products/{id}/photo
+GET /api/products/{id}/image
+```
+
+Públicas e equivalentes; `photo` aponta sempre para `/photo`.
+
+```ts
+const src = product.photo
+  ? new URL(product.photo, 'http://localhost:8080').toString()
+  : '/placeholder-product.png';
+```
+
+Pode ser PDF, portanto nem toda URL cabe em `<img>`. MIME possível: imagens, `application/pdf` ou `application/octet-stream`. Retorna `404` quando produto/arquivo não existe ou o produto não tem arquivo.
+
+## 7. Dashboard
+
+Todos exigem sessão e consideram também produtos `active: false`. Não há filtros.
+
+### 7.1 Resumo
+
+```http
+GET /api/dashboard/summary
+```
+
 ```json
 {
-  "timestamp": "2026-10-20T18:47:41.554Z",
+  "total_products": 20,
+  "total_categories": 5,
+  "total_inventory_value": 84520.50,
+  "average_product_price": 704.3375,
+  "products_without_photo": 2,
+  "low_stock_count": 3
+}
+```
+
+- valor do estoque: soma `price * stock_quantity`;
+- preço médio: média de `price`;
+- sem foto: coluna `photo` nula;
+- estoque baixo: `stock_quantity <= 5`, incluindo zero;
+- sem dados, agregados são zero.
+
+### 7.2 Produtos por categoria
+
+```http
+GET /api/dashboard/products-by-category
+```
+
+```json
+[
+{
+  "category_id": "d9562726-42f7-4d6f-b9ea-528d2bd78284",
+  "category_name": "Eletrônicos",
+  "product_count": 4,
+  "total_value": 5840.00
+}]
+```
+
+`total_value` soma `price * stock_quantity`. Categorias vazias não aparecem e a ordem não é garantida.
+
+### 7.3 Faixas de preço
+
+```http
+GET /api/dashboard/price-ranges
+```
+
+```json
+[
+  { "range": "R$ 0 - R$ 50", "count": 6 },
+  { "range": "R$ 51 - R$ 200", "count": 8 },
+  { "range": "R$ 201+", "count": 6 }
+]
+```
+
+Sempre vêm três itens. Limites reais: `<= 50`, `> 50 && <= 200`, `> 200`; apesar do rótulo “R$ 51”, `50.01` pertence à segunda faixa.
+
+## 8. Erros e status
+
+Não há `@ControllerAdvice`. Exceto o `401` customizado, vale o erro padrão do Spring:
+
+```json
+{
+  "timestamp": "2026-10-26T18:47:41.554Z",
   "status": 404,
   "error": "Not Found",
   "path": "/api/products/00000000-0000-0000-0000-000000000000"
 }
 ```
-- `400` de validação (`@Valid`) usa o mesmo formato (`"error": "Bad Request"`). **As mensagens de validação NÃO vêm no corpo por padrão** — valide no frontend e use apenas o status.
-- Em execução via IDE/devtools pode aparecer também `message`/`trace` no corpo; não dependa desses campos.
-- `401` de rota protegida é a exceção customizada da seção 2.3.
-- `409` apenas para DELETE de categoria com produtos.
 
-## 6. Fluxos esperados no frontend
+O formato pode variar. Não dependa de `message`, `errors` ou `trace`; trate pelo status.
 
-1. **Login:** `POST /api/login` com JSON → guardar estado "logado" (a sessão é o cookie; não há token para armazenar). Incluir credenciais em todas as chamadas.
-2. **Bootstrapping:** ao abrir o app, tentar uma rota de escrita ou usar o estado de erro 401 para decidir se mostra a tela de login. Não existe endpoint `GET /api/me`.
-3. **Categorias:** listar/ler livremente. Criar/editar/excluir apenas quando logado. Em 409 ao excluir, informar que há produtos vinculados.
-4. **Produtos:** listagem pública paginada com busca `nome` e ordenação. Criar/editar com envio JSON (sem arquivo) ou multipart (com arquivo). Exibir `photo` prefixando a base URL.
-5. **Logout:** `POST /api/logout` → limpar estado e voltar ao login.
-6. **Tratamento global:** 401 → redirecionar/abrir login; 404 → mensagem "não encontrado"; 400 → validação; 409 → regra de negócio; 5xx → erro genérico.
+| Status | Uso |
+|---:|---|
+| `200` | consulta/login/logout/atualização |
+| `201` | criação; há `Location` |
+| `204` | exclusão; não parsear JSON |
+| `400` | JSON/query/UUID/validação/arquivo inválido |
+| `401` | login inválido ou sessão ausente/expirada |
+| `404` | recurso/arquivo inexistente |
+| `409` | categoria ainda possui produtos |
+| `413` | possível para multipart grande |
+| `415` | `Content-Type` não suportado |
+| `500` | persistência, sort inválido ou I/O |
 
-## 7. Observações técnicas para o frontend
+```ts
+async function parseResponse<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    // limpar autenticação e abrir login
+  }
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new ApiError(response.status, error);
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+```
 
-- Use `fetch` com `credentials: "same-origin"` (ou `"include"` se cross-origin com CORS) — sem isso o cookie de sessão não é enviado.
-- Em multipart, **não** defina `Content-Type` manualmente (o browser gera o boundary).
-- Respostas `204` não têm corpo.
-- `photo` pode ser `null`; trate com placeholder.
-- Imagens/PDFs são servidos apenas via API (não há pasta estática pública).
-- Não há refresh token, papéis/permissões nem multiusuário pela API: login é tudo-ou-nada (usuários existem só na tabela `user`).
-- Não há CORS: para desenvolvimento, configure proxy de `/api` no dev server (Vite: `server.proxy`), evitando cookies cross-origin.
-- A URL da imagem é servida apenas quando o produto existe; o `photo` é montado dinamicamente a partir do id.
+## 9. Fluxos recomendados
 
-## 8. Dados iniciais (perfil dev)
+### Inicialização/login
 
-Com o banco vazio, o seeder cria automaticamente:
-- **5 categorias** e **20 produtos** (4 por categoria), com nomes gerados pelo Datafaker em inglês.
-- Cada produto recebe um **PNG placeholder** embutido (300×300).
-- Usuário `admin` criado pela migration V3 (senha em hash BCrypt definida na migration).
+1. Chamar `/api/auth/check`.
+2. Em `200`, popular usuário; em `401`, mostrar login.
+3. Enviar login com cookies habilitados.
+4. Não salvar senha nem procurar JWT.
+5. Só carregar dashboard depois de confirmar sessão.
 
-## 9. Resumo dos status codes
+### Catálogo/formulários
 
-| Código | Quando |
-|---|---|
-| 200 | GET/PUT/login/logout bem-sucedidos |
-| 201 | POST de categoria/produto criado |
-| 204 | DELETE de categoria/produto |
-| 400 | validação, arquivo inválido, query inválida |
-| 401 | login inválido ou rota protegida sem sessão |
-| 404 | recurso/categoria/imagem inexistente |
-| 409 | excluir categoria com produtos |
-| 413/500 | arquivo acima do limite / falha ao salvar arquivo |
+1. Carregar categorias para selects e produtos com paginação server-side.
+2. Ao mudar filtro, voltar `page` a `0`; aplicar debounce em `nome`.
+3. Restringir `sort` a propriedades conhecidas.
+4. Usar JSON sem arquivo e `FormData` com arquivo.
+5. Validar arquivo, preço e estoque no cliente.
+6. Considerar que PUT sem reenvio remove a foto.
+
+### Logout/sessão expirada
+
+1. Chamar `/api/logout`.
+2. Limpar estado/cache privado.
+3. Tratar globalmente `401` como sessão ausente/expirada.
+
+## 10. Cliente `fetch` de referência
+
+```ts
+const API_BASE = '/api';
+
+class ApiError extends Error {
+  constructor(public status: number, public payload: unknown) {
+    super(`API request failed with status ${status}`);
+  }
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: {
+      ...(!(init.body instanceof FormData) && init.body
+        ? { 'Content-Type': 'application/json' }
+        : {}),
+      ...init.headers,
+    },
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new ApiError(response.status, payload);
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+
+export const authApi = {
+  login: (body: LoginRequest) => request<LoginResponse>('/login', {
+    method: 'POST', body: JSON.stringify(body),
+  }),
+  check: () => request<AuthCheckResponse>('/auth/check'),
+  logout: () => request<{ message: string }>('/logout', { method: 'POST' }),
+};
+
+export const productApi = {
+  list: (p: URLSearchParams) => request<SpringPage<Product>>(`/products?${p}`),
+  get: (id: UUID) => request<Product>(`/products/${id}`),
+  createJson: (body: ProductInput) => request<Product>('/products', {
+    method: 'POST', body: JSON.stringify(body),
+  }),
+  createMultipart: (body: FormData) => request<Product>('/products', {
+    method: 'POST', body,
+  }),
+  updateJson: (id: UUID, body: ProductInput) => request<Product>(`/products/${id}`, {
+    method: 'PUT', body: JSON.stringify(body),
+  }),
+  updateStock: (id: UUID, stock_quantity: number) =>
+    request<Product>(`/products/${id}/stock`, {
+      method: 'PATCH', body: JSON.stringify({ stock_quantity }),
+    }),
+  remove: (id: UUID) => request<void>(`/products/${id}`, { method: 'DELETE' }),
+};
+```
+
+## 11. Banco, arquivos e dados iniciais
+
+Configuração dev atual:
+
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/project
+spring.datasource.username=root
+spring.datasource.password=1234
+spring.jpa.hibernate.ddl-auto=validate
+spring.flyway.enabled=true
+app.storage.products-dir=uploads/products
+app.default-admin.username=admin
+app.default-admin.password=admin
+```
+
+A migration cria originalmente `admin`/`1234`, mas no perfil `dev` o `DataSeeder` atualiza esse usuário pelas propriedades. Com a configuração versionada, as credenciais efetivas são `admin`/`admin`. Fora do perfil `dev`, permanece a senha da migration, salvo alteração posterior.
+
+O seeder:
+
+- configura o admin mesmo se já houver categorias;
+- se não houver categoria, cria 5 categorias e 20 produtos;
+- gera preços, estoques e custos fictícios;
+- copia uma imagem padrão por produto;
+- se houver qualquer categoria, não cria catálogo fictício.
+
+O banco guarda só o nome do arquivo; o conteúdo fica em `uploads/products`. Backup apenas do banco não preserva imagens.
+
+## 12. Arquitetura e limitações
+
+```text
+HTTP -> Spring Security -> Controller/@Valid -> Service/DTO -> Repository/JPA -> banco
+```
+
+- `SecurityConfig`: sessão/autorização/logout/401;
+- controllers e services de auth, categorias, produtos e dashboard;
+- `ImageStorageService`: arquivos;
+- `DataSeeder`: dados dev;
+- `db/migration`: esquema Flyway.
+
+Limitações relevantes:
+
+- sem cadastro, perfil, recuperação ou troca de senha;
+- sem permissões diferentes;
+- sem filtro por `active`; inativos continuam em listas/métricas;
+- categorias sem paginação e já incluindo produtos;
+- sem busca de categorias;
+- sem PATCH geral, apenas estoque;
+- PUT sem arquivo remove foto;
+- sem endpoint para remover apenas foto;
+- nomes não são únicos;
+- sem operações em lote;
+- sem CORS;
+- arquivos locais, não S3/CDN;
+- erros sem contrato detalhado uniforme.
+
+## 13. Executar e testar
+
+Requer Java 21 e MySQL/MariaDB conforme `application-dev.properties`.
+
+```bash
+./mvnw spring-boot:run
+```
+
+```bash
+# Login e cookie
+curl -i -c cookies.txt \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin"}' \
+  http://localhost:8080/api/login
+
+curl -i -b cookies.txt http://localhost:8080/api/auth/check
+curl 'http://localhost:8080/api/products?page=0&size=10&stock_status=LOW_STOCK'
+curl -i -b cookies.txt http://localhost:8080/api/dashboard/summary
+curl -i -b cookies.txt -X POST http://localhost:8080/api/logout
+```
+
+Há uma coleção Bruno em `bruno/`; a `base_url` esperada é `http://localhost:8080/api`. IDs estáticos dos exemplos precisam ser trocados pelos UUIDs da base atual.
+
+## 14. Checklist para o agente de frontend
+
+- usar `/api` via proxy, preferencialmente;
+- habilitar cookies em toda chamada;
+- restaurar sessão por `/api/auth/check`;
+- não implementar JWT;
+- paginação zero-based;
+- enviar filtros com nomes exatos;
+- usar `camelCase` somente no valor de `sort` e `snake_case` nos DTOs;
+- converter valores de formulário antes do JSON;
+- não definir `Content-Type` para `FormData`;
+- tratar `photo: null` e distinguir imagem/PDF;
+- não chamar `.json()` em `204`;
+- tratar globalmente `401`, `400`, `404`, `409`, 5xx;
+- validar estoque não negativo no formulário completo;
+- contornar/avisar remoção da foto em PUT sem arquivo;
+- ordenar dashboard no cliente quando necessário;
+- não presumir que produtos inativos sejam omitidos.

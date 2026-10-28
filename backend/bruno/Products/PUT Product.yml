@@ -1,0 +1,24 @@
+info:
+  name: PUT Product
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: "{{base_url}}/products/2eb218a5-301b-4dcd-a715-c698f511d303"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Produto Alterado",
+        "price": 5000.55,
+        "category_id": "b3f9ccf9-0a17-443b-9f4a-c668bd2ccbd5"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

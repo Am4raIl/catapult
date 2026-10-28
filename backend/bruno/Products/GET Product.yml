@@ -1,0 +1,16 @@
+info:
+  name: GET Product
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/products/92b50b2b-f203-4768-b858-e31b3cec7f00"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

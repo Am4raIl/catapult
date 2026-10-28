@@ -1,0 +1,33 @@
+info:
+  name: POST Product
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{base_url}}/products"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: Testando
+      - name: price
+        type: text
+        value: "1234.56"
+      - name: category_id
+        type: text
+        value: 611b47ca-f452-43ee-a77e-3b2dfcca2c4c
+      - name: photo
+        type: file
+        value:
+          - /home/japones/Downloads/Charizard.png
+        contentType: image/png
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

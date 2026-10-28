@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #17153b;
+  --violet: #5b3df5;
+  --lime: #d4f55a;
+  --ground: #f4f3ff;
+  --surface: #ffffff;
+  --line: #e4e1f5;
+  --line-soft: #eeecfa;
+  --line-input: #cfcbe8;
+  --muted: #5a587a;
+  --danger: #b3122f;
+  --scrim: #17153b;
+
+  --success-bg: #e3f8b0;
+  --success-ink: #2b3a00;
+  --warning-bg: #ffe7b8;
+  --warning-ink: #6b3f00;
+  --error-bg: #ffd9de;
+  --error-ink: #7a1426;
+  --info-bg: #edebfa;
+  --info-ink: #17153b;
+
+  --thumb-1-start: #d9d2ff;
+  --thumb-1-end: #b8a8ff;
+  --thumb-2-start: #f1ffc4;
+  --thumb-2-end: #d4f55a;
+  --thumb-3-start: #ffe1d6;
+  --thumb-3-end: #ffb9a0;
+  --thumb-4-start: #cff3ff;
+  --thumb-4-end: #9ad9f5;
+  --thumb-5-start: #fff3c9;
+  --thumb-5-end: #ffdd7a;
+  --thumb-6-start: #ffd9de;
+  --thumb-6-end: #ffb3bd;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-violet: var(--violet);
+  --color-lime: var(--lime);
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-input: var(--line-input);
+  --color-muted: var(--muted);
+  --color-danger: var(--danger);
+  --color-scrim: var(--scrim);
+  --color-success: var(--success-bg);
+  --color-success-ink: var(--success-ink);
+  --color-warning: var(--warning-bg);
+  --color-warning-ink: var(--warning-ink);
+  --color-error: var(--error-bg);
+  --color-error-ink: var(--error-ink);
+  --color-info: var(--info-bg);
+  --color-info-ink: var(--info-ink);
+
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-bricolage);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+
+.on-dark :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: var(--lime);
+}
+
+dialog::backdrop {
+  background:
+    radial-gradient(circle at 18% 15%, #4a3fb0 0%, transparent 48%),
+    var(--scrim);
+}
+
+dialog {
+  border: 0;
+}
+
+.modal-panel {
+  animation: modal-in 180ms ease-out;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toast-card {
+  animation: toast-in 180ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.thumb-0 {
+  background: linear-gradient(135deg, var(--thumb-1-start), var(--thumb-1-end));
+}
+
+.thumb-1 {
+  background: linear-gradient(135deg, var(--thumb-2-start), var(--thumb-2-end));
+}
+
+.thumb-2 {
+  background: linear-gradient(135deg, var(--thumb-3-start), var(--thumb-3-end));
+}
+
+.thumb-3 {
+  background: linear-gradient(135deg, var(--thumb-4-start), var(--thumb-4-end));
+}
+
+.thumb-4 {
+  background: linear-gradient(135deg, var(--thumb-5-start), var(--thumb-5-end));
+}
+
+.thumb-5 {
+  background: linear-gradient(135deg, var(--thumb-6-start), var(--thumb-6-end));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

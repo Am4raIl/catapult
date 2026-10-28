@@ -1,34 +1,18 @@
-HELP.md
-target/
-uploads/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# Dependencies and generated output
+**/node_modules/
+**/.expo/
+**/.next/
+**/target/
+**/build/
+**/dist/
+**/uploads/
+**/*.tsbuildinfo
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Local configuration and secrets
+**/.env.local
+**/.env.*.local
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
+# IDE and OS files
+.idea/
 .vscode/
+.DS_Store

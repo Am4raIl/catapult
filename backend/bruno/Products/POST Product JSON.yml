@@ -1,0 +1,27 @@
+info:
+  name: POST Product JSON
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{base_url}}/products"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Produto de teste",
+        "price": 49.90,
+        "category_id": "{{category_id}}",
+        "stock_quantity": 4,
+        "cost_price": 20.50,
+        "active": true
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

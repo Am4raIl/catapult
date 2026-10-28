@@ -1,0 +1,15 @@
+CREATE TABLE product(
+    id BINARY(16) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    photo VARCHAR(255) NULL,
+    stock_quantity INT NOT NULL DEFAULT 0,
+    cost_price DECIMAL(10,2) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    category_id BINARY(16) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT fk_product_category
+        FOREIGN KEY(category_id) REFERENCES category (id)
+);

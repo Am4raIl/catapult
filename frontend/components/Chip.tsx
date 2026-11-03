@@ -20,7 +20,7 @@ export function Chip({
       aria-pressed={active}
       className={`inline-flex min-h-11 items-center justify-center rounded-full border px-4 text-[13px] font-bold transition ${
         active
-          ? "border-ink bg-ink text-white"
+          ? "border-violet bg-violet text-white"
           : "border-line-input bg-surface text-ink hover:bg-ground"
       } ${className}`}
       {...props}

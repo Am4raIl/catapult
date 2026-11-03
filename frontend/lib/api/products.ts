@@ -1,4 +1,4 @@
-import { fetchBlob, request } from "./client";
+import { fetchBlob, request, type RequestOptions } from "./client";
 import type {
   Product,
   ProductInput,
@@ -8,6 +8,28 @@ import type {
 } from "./types";
 
 export type PhotoKind = "image" | "pdf" | "other";
+const photoRevisions = new Map<string, number>();
+let photoRevision = 0;
+
+function versionPhoto(product: Product): Product {
+  if (!product.photo || !product.updated_at) return product;
+  const [path, query] = product.photo.split("?");
+  const params = new URLSearchParams(query);
+  params.set("v", product.updated_at);
+  const revision = photoRevisions.get(product.id);
+  if (revision != null) params.set("r", String(revision));
+  return { ...product, photo: `${path}?${params}` };
+}
+
+async function requestProduct(path: string, options?: RequestOptions) {
+  return versionPhoto(await request<Product>(path, options));
+}
+
+async function saveProduct(path: string, options: RequestOptions) {
+  const product = await request<Product>(path, options);
+  photoRevisions.set(product.id, ++photoRevision);
+  return versionPhoto(product);
+}
 
 function toQuery(params: ProductListParams) {
   const search = new URLSearchParams();
@@ -16,48 +38,55 @@ function toQuery(params: ProductListParams) {
   if (params.size != null) search.set("size", String(params.size));
   if (params.nome) search.set("nome", params.nome);
   if (params.category_id) search.set("category_id", params.category_id);
-  if (params.min_price != null) search.set("min_price", String(params.min_price));
-  if (params.max_price != null) search.set("max_price", String(params.max_price));
+  if (params.min_price != null)
+    search.set("min_price", String(params.min_price));
+  if (params.max_price != null)
+    search.set("max_price", String(params.max_price));
   if (params.has_photo != null)
     search.set("has_photo", String(params.has_photo));
   if (params.stock_status) search.set("stock_status", params.stock_status);
   if (params.sort) search.set("sort", params.sort);
+  if (params.active != null) search.set("active", String(params.active));
 
   return search.toString();
 }
 
 export const productsApi = {
-  list: (params: ProductListParams = {}) =>
-    request<SpringPage<Product>>(`/products?${toQuery(params)}`),
+  list: async (params: ProductListParams = {}) => {
+    const page = await request<SpringPage<Product>>(
+      `/products?${toQuery(params)}`,
+    );
+    return { ...page, content: page.content.map(versionPhoto) };
+  },
 
-  get: (id: UUID) => request<Product>(`/products/${id}`),
+  get: (id: UUID) => requestProduct(`/products/${id}`),
 
   createJson: (body: ProductInput) =>
-    request<Product>("/products", {
+    saveProduct("/products", {
       method: "POST",
       body: JSON.stringify(body),
     }),
 
   createMultipart: (body: FormData) =>
-    request<Product>("/products", {
+    saveProduct("/products", {
       method: "POST",
       body,
     }),
 
   updateJson: (id: UUID, body: ProductInput) =>
-    request<Product>(`/products/${id}`, {
+    saveProduct(`/products/${id}`, {
       method: "PUT",
       body: JSON.stringify(body),
     }),
 
   updateMultipart: (id: UUID, body: FormData) =>
-    request<Product>(`/products/${id}`, {
+    saveProduct(`/products/${id}`, {
       method: "PUT",
       body,
     }),
 
   updateStock: (id: UUID, stock_quantity: number) =>
-    request<Product>(`/products/${id}/stock`, {
+    requestProduct(`/products/${id}/stock`, {
       method: "PATCH",
       body: JSON.stringify({ stock_quantity }),
     }),

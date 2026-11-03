@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "./Button";
 import { CloseIcon } from "./icons";
 
@@ -25,6 +25,31 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+
+  function trapFocus(event: KeyboardEvent<HTMLDialogElement>) {
+    if (event.key !== "Tab") return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const targets = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        "button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]",
+      ),
+    ).filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0 && !element.closest("[inert]"));
+    const first = targets[0];
+    const last = targets.at(-1);
+    if (!first || !last) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -61,7 +86,8 @@ export function Modal({
       aria-modal="true"
       aria-labelledby={labelledBy}
       aria-label={ariaLabel}
-      className="m-auto max-h-[calc(100vh-32px)] w-[calc(100vw-32px)] overflow-visible bg-transparent p-0 outline-none"
+      onKeyDown={trapFocus}
+      className={`modal-dialog m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] overflow-visible bg-transparent p-0 outline-none ${widthClass}`}
       onCancel={(event) => {
         event.preventDefault();
         if (!closeDisabled) onClose();
@@ -70,9 +96,7 @@ export function Modal({
         if (event.target === dialogRef.current && !closeDisabled) onClose();
       }}
     >
-      <div
-        className={`modal-panel mx-auto max-h-[calc(100vh-32px)] w-full overflow-y-auto rounded-[28px] bg-surface p-5 shadow-[0_30px_80px_rgba(0,0,0,.45)] sm:p-7 ${widthClass}`}
-      >
+      <div className="modal-panel mx-auto max-h-[calc(100dvh-32px)] w-full overflow-y-auto overscroll-contain rounded-[28px] border border-line bg-surface p-5 text-ink shadow-[0_28px_100px_-20px_rgba(0,0,0,.32)] sm:p-7">
         {children}
       </div>
     </dialog>

@@ -20,8 +20,13 @@ export function Tag({
 }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${styles[variant]} ${className}`}
+      data-variant={variant}
+      className={`status-tag inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-current/10 px-2.5 py-1.5 text-[11px] font-semibold leading-none ${styles[variant]} ${className}`}
     >
+      <span
+        aria-hidden="true"
+        className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-80"
+      />
       {children}
     </span>
   );

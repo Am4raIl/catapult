@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/Button";
 import { InputField } from "@/components/FormField";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { ApiError } from "@/lib/api/client";
 import { authApi } from "@/lib/api/auth";
 import { useSession } from "./SessionProvider";
@@ -92,11 +93,14 @@ export function LoginScreen({ from }: { from: string }) {
         </div>
       </section>
 
-      <section className="flex items-center justify-center p-5 sm:p-10">
+      <section className="relative flex items-center justify-center p-5 sm:p-10">
         <div className="w-full max-w-[380px] rounded-[20px] border border-line bg-surface p-6 shadow-sm sm:p-8">
-          <h2 className="font-display text-3xl font-extrabold text-ink">
-            Entrar
-          </h2>
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="font-display text-3xl font-extrabold text-ink">
+              Entrar
+            </h2>
+            <ThemeToggle />
+          </div>
           <p className="mt-1 text-[13px] text-muted">
             Use suas credenciais para acessar o painel.
           </p>
@@ -130,7 +134,11 @@ export function LoginScreen({ from }: { from: string }) {
               {...register("password")}
             />
 
-            <Button type="submit" loading={isSubmitting} className="mt-2 w-full">
+            <Button
+              type="submit"
+              loading={isSubmitting}
+              className="mt-2 w-full"
+            >
               Entrar
             </Button>
           </form>

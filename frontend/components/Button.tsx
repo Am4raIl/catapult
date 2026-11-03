@@ -3,12 +3,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 export type ButtonVariant =
-  | "primary"
-  | "secondary"
-  | "danger"
-  | "lime"
-  | "darkSecondary"
-  | "ghost";
+  "primary" | "secondary" | "danger" | "lime" | "darkSecondary" | "ghost";
 
 export type ButtonSize = "md" | "sm" | "icon";
 
@@ -21,10 +16,9 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: "bg-violet text-white hover:brightness-90",
-  secondary:
-    "border border-line-input bg-surface text-ink hover:bg-ground",
-  danger: "bg-danger text-white hover:brightness-90",
-  lime: "bg-lime text-ink hover:brightness-95",
+  secondary: "border border-line-input bg-surface text-ink hover:bg-ground",
+  danger: "bg-[#b3122f] text-white hover:brightness-90",
+  lime: "bg-lime text-[#172210] hover:brightness-95",
   darkSecondary:
     "border border-[#8F86E0] bg-transparent text-white hover:bg-white/10",
   ghost: "bg-transparent text-ink hover:bg-line-soft",

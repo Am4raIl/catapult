@@ -115,4 +115,16 @@ export interface ProductListParams {
   has_photo?: boolean;
   stock_status?: StockStatusApi;
   sort?: string;
+  active?: boolean;
+}
+
+export interface CheckoutRequest {
+  request_id: string;
+  items: { product_id: string; quantity: number }[];
+}
+
+export interface CheckoutReceipt {
+  id: string;
+  total: number;
+  item_count: number;
 }

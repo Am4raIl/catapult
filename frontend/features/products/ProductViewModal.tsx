@@ -7,27 +7,26 @@ import { ReadonlyField } from "@/components/FormField";
 import { Modal, ModalHeader } from "@/components/Modal";
 import { Tag } from "@/components/Tag";
 import { Thumb } from "@/components/Thumb";
+import { BagIcon, PackageIcon } from "@/components/icons";
 import { useToast } from "@/components/Toaster";
 import { ApiError } from "@/lib/api/client";
 import { productsApi } from "@/lib/api/products";
 import type { Product } from "@/lib/api/types";
-import {
-  formatCurrency,
-  formatDateTime,
-  formatStock,
-} from "@/lib/format";
-import { getAdminStatus } from "@/lib/product-status";
+import { formatCurrency, formatDateTime, formatStock } from "@/lib/format";
+import { getAdminStatus, getStorefrontStatus } from "@/lib/product-status";
 
 export function ProductViewModal({
   product,
   mode,
   onClose,
   onEdit,
+  onBuy,
 }: {
   product: Product;
   mode: "public" | "admin";
   onClose: () => void;
   onEdit?: () => void;
+  onBuy?: (product: Product) => void;
 }) {
   const titleId = useId();
   const toast = useToast();
@@ -47,6 +46,79 @@ export function ProductViewModal({
 
   const status = getAdminStatus(current.stock_quantity);
   const isAdmin = mode === "admin";
+
+  if (!isAdmin) {
+    const publicStatus = getStorefrontStatus(current.stock_quantity);
+    const available = current.active && current.stock_quantity > 0;
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        labelledBy={titleId}
+        widthClass="max-w-[960px]"
+      >
+        <ModalHeader
+          title="Um olhar mais de perto."
+          titleId={titleId}
+          subtitle="Detalhes do produto"
+          onClose={onClose}
+        />
+        <div className="mt-6 grid gap-6 md:grid-cols-2 md:gap-9">
+          <div className="relative aspect-square overflow-hidden rounded-[22px]">
+            <Thumb
+              id={current.id}
+              photo={current.photo}
+              alt={current.name}
+              className="h-full w-full"
+              roundedClass="rounded-[22px]"
+              openPdf
+            />
+            <span className="pointer-events-none absolute left-4 top-4">
+              <Tag variant={publicStatus.variant}>{publicStatus.label}</Tag>
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-col justify-center py-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.13em] text-violet">
+              {current.category.name}
+            </p>
+            <h3 className="mt-3 break-words font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+              {current.name}
+            </h3>
+            <p className="mt-6 font-display text-3xl font-bold tracking-tight tabular-nums">
+              {formatCurrency(current.price)}
+            </p>
+            <p className="mt-5 flex items-center gap-2 text-sm text-muted">
+              <PackageIcon className="h-4 w-4" />
+              {available
+                ? `${formatStock(current.stock_quantity)} disponíveis`
+                : "Produto indisponível no momento"}
+            </p>
+            <div className="mt-8 border-t border-line pt-6">
+              {onBuy ? (
+                <Button
+                  className="w-full"
+                  disabled={!available}
+                  onClick={() => {
+                    onBuy(current);
+                    onClose();
+                  }}
+                >
+                  <BagIcon className="h-4 w-4" />
+                  {available ? "Adicionar à sacola" : "Indisponível"}
+                </Button>
+              ) : null}
+              <Button variant="ghost" className="mt-2 w-full" onClick={onClose}>
+                Continuar explorando
+              </Button>
+              <p className="mt-4 text-xs leading-relaxed text-muted">
+                Adicione à sacola e finalize sua compra por lá. Sem cobrança online.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal open onClose={onClose} labelledBy={titleId}>
@@ -92,10 +164,16 @@ export function ProductViewModal({
         />
         <ReadonlyField label="Preço" value={formatCurrency(current.price)} />
         {isAdmin ? (
-          <ReadonlyField label="Custo" value={formatCurrency(current.cost_price)} />
+          <ReadonlyField
+            label="Custo"
+            value={formatCurrency(current.cost_price)}
+          />
         ) : null}
         {isAdmin ? (
-          <ReadonlyField label="Criado em" value={formatDateTime(current.created_at)} />
+          <ReadonlyField
+            label="Criado em"
+            value={formatDateTime(current.created_at)}
+          />
         ) : null}
         {isAdmin ? (
           <ReadonlyField

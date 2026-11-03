@@ -15,7 +15,17 @@ export function formatCurrency(value: number | null | undefined): string {
   return currencyFormatter.format(value);
 }
 
-export function formatCompactCurrency(value: number | null | undefined): string {
+export function maskCurrencyInput(value: string): string {
+  const digits = value
+    .replace(/\D/g, "")
+    .replace(/^0+(?=\d)/, "")
+    .slice(0, 12);
+  return digits ? currencyFormatter.format(Number(digits) / 100) : "";
+}
+
+export function formatCompactCurrency(
+  value: number | null | undefined,
+): string {
   if (value == null || Number.isNaN(value)) return "—";
   return compactCurrencyFormatter.format(value);
 }
@@ -33,10 +43,7 @@ export function formatDateTime(value: string | null | undefined): string {
 }
 
 export function parseDecimalInput(value: string): number {
-  const cleaned = value
-    .trim()
-    .replace(/R\$/gi, "")
-    .replace(/\s/g, "");
+  const cleaned = value.trim().replace(/R\$/gi, "").replace(/\s/g, "");
 
   if (!cleaned) return Number.NaN;
 

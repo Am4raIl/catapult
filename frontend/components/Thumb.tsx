@@ -55,7 +55,7 @@ export function Thumb({
         className={`${baseClass} ${gradient} flex items-center justify-center`}
       >
         {showPdfTag ? (
-          <span className="rounded-full bg-ink/85 px-2.5 py-1 text-xs font-bold text-white">
+          <span className="rounded-full bg-[#17153b]/85 px-2.5 py-1 text-xs font-bold text-white">
             PDF
           </span>
         ) : null}

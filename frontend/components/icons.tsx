@@ -137,3 +137,79 @@ export function ImageIcon(props: IconProps) {
     </BaseIcon>
   );
 }
+
+export function ArrowUpRightIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M7 17L17 7M7 7h10v10" />
+    </BaseIcon>
+  );
+}
+
+export function ArrowRightIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M4 12h16M14 6l6 6-6 6" />
+    </BaseIcon>
+  );
+}
+
+export function BagIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M5 7h14l1 14H4L5 7zM9 8V6a3 3 0 016 0v2" />
+    </BaseIcon>
+  );
+}
+
+export function SunIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5" />
+    </BaseIcon>
+  );
+}
+
+export function MoonIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M20.8 13A9 9 0 0111 3.2 9 9 0 1020.8 13z" />
+    </BaseIcon>
+  );
+}
+
+export function SlidersIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M4 7h3M11 7h9M4 17h9M17 17h3" />
+      <circle cx="9" cy="7" r="2" />
+      <circle cx="15" cy="17" r="2" />
+    </BaseIcon>
+  );
+}
+
+export function CatapultMark(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M5 18L18 5M7 5h11v11M5 10v8h8" strokeWidth="2.6" />
+    </BaseIcon>
+  );
+}
+
+export function EyeIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </BaseIcon>
+  );
+}
+
+export function PencilIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M15 5l4 4M4 20l4.5-1L20 7.5a2.8 2.8 0 00-4-4L4.5 15 4 20z" />
+    </BaseIcon>
+  );
+}

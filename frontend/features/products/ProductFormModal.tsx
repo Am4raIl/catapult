@@ -23,11 +23,7 @@ import {
 } from "./schema";
 
 type ServerField =
-  | "name"
-  | "price"
-  | "categoryId"
-  | "stockQuantity"
-  | "costPrice";
+  "name" | "price" | "categoryId" | "stockQuantity" | "costPrice";
 
 const serverFieldMap: Record<string, ServerField> = {
   name: "name",
@@ -225,26 +221,43 @@ export function ProductFormModal({
     }
 
     try {
+      let saved: Product;
       if (isEdit && product) {
         if (photoFile) {
-          await productsApi.updateMultipart(
+          saved = await productsApi.updateMultipart(
             product.id,
             buildFormData(photoFile),
           );
         } else {
-          await productsApi.updateJson(product.id, input);
+          saved = await productsApi.updateJson(product.id, input);
         }
       } else if (photoFile) {
-        await productsApi.createMultipart(buildFormData(photoFile));
+        saved = await productsApi.createMultipart(buildFormData(photoFile));
       } else {
-        await productsApi.createJson(input);
+        saved = await productsApi.createJson(input);
       }
 
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      if (isEdit && product) {
-        queryClient.invalidateQueries({ queryKey: ["product", product.id] });
-      }
+      queryClient.setQueryData(["product", saved.id], saved);
+      queryClient.setQueriesData(
+        { queryKey: ["products"] },
+        (data: unknown) => {
+          if (!data || typeof data !== "object") return data;
+          if ("content" in data && Array.isArray(data.content)) {
+            return {
+              ...data,
+              content: data.content.map((item: Product) =>
+                item.id === saved.id ? saved : item,
+              ),
+            };
+          }
+          return "id" in data && data.id === saved.id ? saved : data;
+        },
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["categories"] }),
+      ]);
       toast.success(
         "Produto salvo",
         `${name} foi ${isEdit ? "atualizado" : "criado"}.`,
@@ -289,7 +302,12 @@ export function ProductFormModal({
   const showCurrentPhoto = Boolean(currentPhoto && !removePhoto);
 
   return (
-    <Modal open onClose={onClose} labelledBy={titleId} closeDisabled={isSubmitting}>
+    <Modal
+      open
+      onClose={onClose}
+      labelledBy={titleId}
+      closeDisabled={isSubmitting}
+    >
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <ModalHeader
           title={isEdit ? "Editar produto" : "Novo produto"}
@@ -408,7 +426,7 @@ export function ProductFormModal({
                   />
                 ) : file?.type === "application/pdf" ? (
                   <div className="thumb-0 flex h-16 w-16 items-center justify-center rounded-2xl">
-                    <span className="rounded-full bg-ink/85 px-2.5 py-1 text-xs font-bold text-white">
+                    <span className="rounded-full bg-[#17153b]/85 px-2.5 py-1 text-xs font-bold text-white">
                       PDF
                     </span>
                   </div>
@@ -483,11 +501,7 @@ export function ProductFormModal({
         </div>
 
         <div className="mt-6 flex flex-wrap justify-end gap-3">
-          <Button
-            variant="secondary"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             Cancelar
           </Button>
           <Button type="submit" loading={isSubmitting}>

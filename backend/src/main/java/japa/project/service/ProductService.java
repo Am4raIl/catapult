@@ -36,22 +36,24 @@ public class ProductService {
     }
 
     public Page<ProductResponseDTO> listAll(String nome, Pageable pageable) {
-        return listAll(nome, null, null, null, null, null, pageable);
+        return listAll(nome, null, null, null, null, null, null, pageable);
     }
 
     public Page<ProductResponseDTO> listAll(String nome, UUID categoryId, BigDecimal minPrice,
                                            BigDecimal maxPrice, Boolean hasPhoto,
-                                           String stockStatus, Pageable pageable) {
-        Specification<Product> spec = buildSpecification(nome, categoryId, minPrice, maxPrice, hasPhoto, stockStatus);
+                                           String stockStatus, Boolean active, Pageable pageable) {
+        Specification<Product> spec = buildSpecification(nome, categoryId, minPrice, maxPrice, hasPhoto, stockStatus, active);
         return repository.findAll(spec, pageable)
                 .map(this::toResponseDTO);
     }
 
     private Specification<Product> buildSpecification(String nome, UUID categoryId, BigDecimal minPrice,
                                                      BigDecimal maxPrice, Boolean hasPhoto,
-                                                     String stockStatus) {
+                                                     String stockStatus, Boolean active) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+
+            if (active != null) predicates.add(cb.equal(root.get("active"), active));
 
             if (nome != null && !nome.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("name")), "%" + nome.toLowerCase() + "%"));
@@ -102,6 +104,11 @@ public class ProductService {
         return toResponseDTO(findEntityById(id));
     }
 
+    private Product findForUpdate(UUID id) {
+        return repository.findLockedById(id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado."));
+    }
+
     public ProductResponseDTO save(ProductRequestDTO dto) {
         return save(dto, null);
     }
@@ -132,7 +139,7 @@ public class ProductService {
 
     @Transactional
     public ProductResponseDTO update(UUID id, ProductRequestDTO dto, MultipartFile image) {
-        Product produto = findEntityById(id);
+        Product produto = findForUpdate(id);
         Category category = categoryService.findEntityById(dto.category_id());
         String oldImage = produto.getPhoto();
         String newImage = null;
@@ -163,7 +170,7 @@ public class ProductService {
 
     @Transactional
     public ProductResponseDTO updateStock(UUID id, Integer stockQuantity) {
-        Product produto = findEntityById(id);
+        Product produto = findForUpdate(id);
         if (stockQuantity == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A quantidade em estoque é obrigatória");
         }
@@ -177,7 +184,7 @@ public class ProductService {
 
     @Transactional
     public void delete(UUID id) {
-        Product produto = findEntityById(id);
+        Product produto = findForUpdate(id);
         String image = produto.getPhoto();
         repository.delete(produto);
         repository.flush();

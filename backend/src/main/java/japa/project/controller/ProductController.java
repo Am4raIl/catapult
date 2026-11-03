@@ -47,8 +47,9 @@ public class ProductController {
             @RequestParam(required = false) BigDecimal max_price,
             @RequestParam(required = false) Boolean has_photo,
             @RequestParam(required = false) String stock_status,
+            @RequestParam(required = false) Boolean active,
             @PageableDefault(size = 10, sort = "name") Pageable pageable) {
-        return ResponseEntity.ok(service.listAll(nome, category_id, min_price, max_price, has_photo, stock_status, pageable));
+        return ResponseEntity.ok(service.listAll(nome, category_id, min_price, max_price, has_photo, stock_status, active, pageable));
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)

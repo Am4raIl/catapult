@@ -33,6 +33,7 @@ public class SecurityConfig {
                         securityContext.securityContextRepository(securityContextRepository))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/login", "/api/logout").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/checkout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/check").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/**").permitAll()

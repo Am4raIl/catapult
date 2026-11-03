@@ -29,6 +29,7 @@ Características gerais:
 |---|---|---:|---|
 | `POST` | `/api/login` | Não | `200` dados do login |
 | `POST` | `/api/logout` | Não | `200` mensagem |
+| `POST` | `/api/checkout` | Não | `200` confirmação e total da compra |
 | `GET` | `/api/auth/check` | Sim | `200` usuário da sessão |
 | `GET` | `/api/categories` | Não | `200` categorias |
 | `POST` | `/api/categories` | Sim | `201` categoria criada |
@@ -47,7 +48,7 @@ Características gerais:
 | `GET` | `/api/dashboard/products-by-category` | Sim | `200` agrupamento |
 | `GET` | `/api/dashboard/price-ranges` | Sim | `200` faixas de preço |
 
-Todos os endpoints de escrita exigem sessão, exceto login/logout. GETs de categorias, produtos e arquivos são públicos. GETs de autenticação e dashboard são protegidos.
+Todos os endpoints de escrita exigem sessão, exceto login/logout e checkout. GETs de categorias, produtos e arquivos são públicos. GETs de autenticação e dashboard são protegidos.
 
 ## 3. Autenticação por sessão
 
@@ -326,6 +327,7 @@ Público; retorna `Page<Product>`.
 | `max_price` | decimal | preço `<=` valor |
 | `has_photo` | boolean | `true`: foto preenchida; `false`: nula |
 | `stock_status` | string | `OUT_OF_STOCK`, `LOW_STOCK`, `IN_STOCK` |
+| `active` | boolean | `true`: somente ativos; `false`: somente inativos; omitido: todos |
 
 São opcionais e combinados com `AND`.
 

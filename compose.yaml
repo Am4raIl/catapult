@@ -1,0 +1,44 @@
+name: catapult
+
+services:
+  db:
+    image: docker.io/library/mysql:8.4
+    environment:
+      MYSQL_DATABASE: project
+      MYSQL_USER: catapult
+      MYSQL_PASSWORD: catapult
+      MYSQL_ROOT_PASSWORD: catapult-root
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  backend:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/project?allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: catapult
+      SPRING_DATASOURCE_PASSWORD: catapult
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - product-uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  mysql-data:
+  product-uploads:

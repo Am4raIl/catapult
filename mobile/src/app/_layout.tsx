@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/core';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
+import { CartProvider } from '@/providers/cart-provider';
 import { AppQueryProvider } from '@/providers/query-provider';
 import { AppThemeProvider, useAppTheme } from '@/providers/theme-provider';
 
@@ -15,6 +16,7 @@ function RootNavigator() {
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: 'slide_from_right' }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="cart" options={{ gestureEnabled: false }} />
       <Stack.Screen name="products/[id]" />
       <Stack.Screen name="login" options={{ animation: 'fade_from_bottom' }} />
       <Stack.Protected guard={status === 'authenticated'} redirectTo="/login">
@@ -25,7 +27,7 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  return <GestureHandlerRootView style={styles.flex}><SafeAreaProvider><AppQueryProvider><AppThemeProvider><AuthProvider><RootNavigator /></AuthProvider></AppThemeProvider></AppQueryProvider></SafeAreaProvider></GestureHandlerRootView>;
+  return <GestureHandlerRootView style={styles.flex}><SafeAreaProvider><AppQueryProvider><AppThemeProvider><AuthProvider><CartProvider><RootNavigator /></CartProvider></AuthProvider></AppThemeProvider></AppQueryProvider></SafeAreaProvider></GestureHandlerRootView>;
 }
 
 const styles = StyleSheet.create({ flex: { flex: 1 }, loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 } });

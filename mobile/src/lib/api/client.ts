@@ -46,15 +46,25 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const photo = init.body instanceof FormData ? init.body.get('photo') : null;
   if (init.body != null && !isFormData && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  const timeout = setTimeout(abort, 30_000);
+  if (init.signal?.aborted) abort();
+  init.signal?.addEventListener('abort', abort, { once: true });
   let response: Response;
   try {
     // Expo fetch cannot serialize the URI-based FormData part from DocumentPicker.
     const hasNativeFile = photo != null && typeof photo === 'object' && 'uri' in photo;
-    response = await (hasNativeFile ? nativeFetch : fetch)(apiUrl(path), { ...init, headers, credentials: 'include' });
+    response = await (hasNativeFile ? nativeFetch : fetch)(apiUrl(path), { ...init, headers, signal: controller.signal, credentials: 'include' });
   } catch (cause) {
     if (cause instanceof ApiConfigError) throw cause;
+    if (init.signal?.aborted) throw cause;
+    if (controller.signal.aborted) throw new Error('A solicitação demorou mais que o esperado. Tente novamente.', { cause });
     const detail = cause instanceof Error && cause.message ? ` (${cause.message})` : '';
     throw new Error(`Não foi possível conectar à API${detail}.`, { cause });
+  } finally {
+    clearTimeout(timeout);
+    init.signal?.removeEventListener('abort', abort);
   }
 
   if (response.status === 401 && !skipUnauthorized) onUnauthorized?.();

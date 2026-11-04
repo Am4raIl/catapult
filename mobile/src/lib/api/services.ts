@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 import { apiUrl, mediaUrl, request } from './client';
 import type {
-  AuthCheckResponse, Category, DashboardSummary, LoginRequest, LoginResponse, PickedFile,
+  AuthCheckResponse, Category, CheckoutReceipt, CheckoutRequest, DashboardSummary, LoginRequest, LoginResponse, PickedFile,
   PriceRange, Product, ProductInput, ProductListParams, ProductsByCategory, SpringPage, UUID,
 } from './types';
 
@@ -22,6 +22,7 @@ export const authApi = {
 
 export const categoriesApi = {
   list: () => request<Category[]>('/categories'),
+  get: (id: UUID) => request<Category>(`/categories/${id}`),
   create: (name: string) => request<Category>('/categories', { method: 'POST', body: JSON.stringify({ name }) }),
   update: (id: UUID, name: string) => request<Category>(`/categories/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
   remove: (id: UUID) => request<void>(`/categories/${id}`, { method: 'DELETE' }),
@@ -37,6 +38,7 @@ export const productsApi = {
   update: (id: UUID, body: ProductInput | FormData) => request<Product>(`/products/${id}`, { method: 'PUT', body: body instanceof FormData ? body : JSON.stringify(body) }),
   updateStock: (id: UUID, stock_quantity: number) => request<Product>(`/products/${id}/stock`, { method: 'PATCH', body: JSON.stringify({ stock_quantity }) }),
   remove: (id: UUID) => request<void>(`/products/${id}`, { method: 'DELETE' }),
+  removeMany: (ids: UUID[]) => request<void>('/products/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) }),
   mediaType: async (photo: string) => {
     const response = await fetch(mediaUrl(photo)!, { method: 'HEAD', credentials: 'include' });
     if (!response.ok) throw new Error('Arquivo indisponível');
@@ -79,3 +81,7 @@ export function productFormData(input: ProductInput, file?: PickedFile) {
 }
 
 export { apiUrl };
+
+export const checkoutApi = {
+  submit: (body: CheckoutRequest) => request<CheckoutReceipt>('/checkout', { method: 'POST', body: JSON.stringify(body), skipUnauthorized: true }),
+};

@@ -61,5 +61,9 @@ export interface ProductListParams {
   has_photo?: boolean;
   stock_status?: StockStatusApi;
   sort?: string;
+  active?: boolean;
 }
 export type PickedFile = { uri: string; name: string; mimeType?: string; size?: number; file?: File; blob?: Blob };
+
+export interface CheckoutRequest { request_id: string; items: { product_id: UUID; quantity: number }[] }
+export interface CheckoutReceipt { id: UUID; total: number; item_count: number }

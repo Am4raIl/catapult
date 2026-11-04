@@ -1,12 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
-import { Appearance, ColorSchemeName } from 'react-native';
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { Appearance } from 'react-native';
 
 import { AppPalette, palettes, ThemePreference } from '@/theme/tokens';
 
 const STORAGE_KEY = '@catapult/theme';
+const subscribeAppearance = (onChange: () => void) => {
+  const subscription = Appearance.addChangeListener(onChange);
+  return () => subscription.remove();
+};
 
 type ThemeContextValue = {
   colors: AppPalette;
@@ -18,15 +22,13 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function AppThemeProvider({ children }: PropsWithChildren) {
-  const [systemScheme, setSystemScheme] = useState<ColorSchemeName | null>(Appearance.getColorScheme());
+  const systemScheme = useSyncExternalStore(subscribeAppearance, Appearance.getColorScheme, () => null);
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
 
   useEffect(() => {
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => setSystemScheme(colorScheme));
     AsyncStorage.getItem(STORAGE_KEY).then((value) => {
       if (value === 'light' || value === 'dark' || value === 'system') setPreferenceState(value);
     }).catch(() => undefined);
-    return () => subscription.remove();
   }, []);
 
   const setPreference = (value: ThemePreference) => {

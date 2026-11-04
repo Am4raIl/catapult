@@ -13,7 +13,7 @@ import { radius, spacing } from '@/theme/tokens';
 import { fileIsPdf, formatCurrency, maskMoneyInput, parseMaskedMoney } from '@/utils/format';
 
 import { ProductMedia } from '../product';
-import { AppButton, AppHeader, AppInput, AppModal, AppSwitch, AppText, FilterChip, InlineError } from '../ui/core';
+import { AppButton, AppHeader, AppInput, AppModal, AppSwitch, AppText, FilterChip, InlineError, ErrorState, LoadingState } from '../ui/core';
 
 type Errors = Partial<Record<'name' | 'category' | 'price' | 'cost' | 'stock' | 'file', string>>;
 type MediaMode = 'keep' | 'replace' | 'remove';
@@ -72,7 +72,7 @@ export function ProductForm({ mode, initial }: { mode: 'create' | 'edit'; initia
   };
 
   const submit = async () => {
-    if (!validate()) return;
+    if (submitting || !validate()) return;
     setSubmitting(true); setSubmitError('');
     try {
       const input: ProductInput = { name: name.trim(), category_id: categoryId, price: parseMaskedMoney(price)!, cost_price: parseMaskedMoney(cost), stock_quantity: Number(stock), active };
@@ -87,8 +87,8 @@ export function ProductForm({ mode, initial }: { mode: 'create' | 'edit'; initia
       const saved = mode === 'create' ? await productsApi.create(payload) : await productsApi.update(initial!.id, payload);
       setSubmitted(true); setDirty(false);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['admin', 'products'] }), queryClient.invalidateQueries({ queryKey: ['catalog'] }),
-        queryClient.invalidateQueries({ queryKey: ['categories'] }), queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin'] }), queryClient.invalidateQueries({ queryKey: ['catalog'] }),
+        queryClient.invalidateQueries({ queryKey: ['categories'] }), queryClient.invalidateQueries({ queryKey: ['category'] }), queryClient.invalidateQueries({ queryKey: ['bag-stock'] }), queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
       ]);
       queryClient.setQueryData(['product', saved.id], saved);
       router.replace({ pathname: '/admin/products/[id]', params: { id: saved.id, saved: mode } });
@@ -104,7 +104,7 @@ export function ProductForm({ mode, initial }: { mode: 'create' | 'edit'; initia
     <Section title="Preço e estoque"><AppInput label="Preço" value={price} onChangeText={(text) => change(setPrice)(maskMoneyInput(text, price))} keyboardType="number-pad" placeholder="R$ 0,00" error={errors.price} /><AppInput label="Custo (opcional)" value={cost} onChangeText={(text) => change(setCost)(maskMoneyInput(text, cost))} keyboardType="number-pad" placeholder="R$ 0,00" error={errors.cost} /><AppInput label="Quantidade em estoque" value={stock} onChangeText={change(setStock)} keyboardType="number-pad" error={errors.stock} /></Section>
     <Section title="Visibilidade e arquivo"><AppSwitch label="Produto ativo" value={active} onValueChange={change(setActive)} />{mode === 'edit' && initial?.photo ? <><ProductMedia product={initial} /><AppText variant="support">O que fazer com o arquivo atual?</AppText><View style={styles.chips}><FilterChip label="Manter arquivo atual" selected={mediaMode === 'keep'} onPress={() => { setMediaMode('keep'); setDirty(true); }} /><FilterChip label="Trocar arquivo" selected={mediaMode === 'replace'} onPress={chooseFile} /><FilterChip label="Remover arquivo" selected={mediaMode === 'remove'} onPress={() => Alert.alert('Remover arquivo?', 'O arquivo atual será excluído ao salvar.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Remover', style: 'destructive', onPress: () => { setMediaMode('remove'); setFile(undefined); setDirty(true); } }])} /></View></> : <FilePicker file={file} error={errors.file} onPick={chooseFile} onRemove={() => { setFile(undefined); setMediaMode('remove'); setDirty(true); }} />}{mediaMode === 'replace' && initial?.photo ? <FilePicker file={file} error={errors.file} onPick={chooseFile} onRemove={() => { setFile(undefined); setMediaMode('keep'); }} /> : null}</Section>
     <AppButton fullWidth loading={submitting} onPress={submit}>{submitting ? (mode === 'create' ? 'Criando...' : 'Salvando...') : (mode === 'create' ? 'Criar produto' : 'Salvar alterações')}</AppButton>
-  </ScrollView><AppModal visible={categoryOpen} title="Escolher categoria" onClose={() => setCategoryOpen(false)}>{categories.isError ? <InlineError>{friendlyError(categories.error)}</InlineError> : [...(categories.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)).map((category) => <FilterChip key={category.id} label={category.name} selected={categoryId === category.id} onPress={() => { setCategoryId(category.id); setCategoryOpen(false); setDirty(true); }} />)}</AppModal></KeyboardAvoidingView>;
+  </ScrollView><AppModal visible={categoryOpen} title="Escolher categoria" onClose={() => setCategoryOpen(false)}>{categories.isLoading ? <LoadingState /> : categories.isError ? <ErrorState message={friendlyError(categories.error)} onRetry={() => categories.refetch()} /> : !categories.data?.length ? <><AppText color="secondary">Crie uma categoria para organizar seu primeiro produto.</AppText><AppButton onPress={() => { setCategoryOpen(false); router.push('/admin/categories'); }}>Gerenciar categorias</AppButton></> : [...(categories.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)).map((category) => <FilterChip key={category.id} label={category.name} selected={categoryId === category.id} onPress={() => { setCategoryId(category.id); setCategoryOpen(false); setDirty(true); }} />)}</AppModal></KeyboardAvoidingView>;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

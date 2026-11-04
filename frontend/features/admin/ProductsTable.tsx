@@ -5,7 +5,7 @@ import {
   useQueries,
   useQuery,
 } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Chip } from "@/components/Chip";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/icons";
 import { Tag } from "@/components/Tag";
 import { Thumb } from "@/components/Thumb";
+import { ProductsBulkDeleteModal } from "@/features/products/ProductsBulkDeleteModal";
 import { categoriesApi } from "@/lib/api/categories";
 import { dashboardApi } from "@/lib/api/dashboard";
 import { productsApi } from "@/lib/api/products";
@@ -120,6 +121,23 @@ export function ProductsTable({
   });
 
   const page = productsQuery.data;
+  const scope = JSON.stringify([filters, debouncedSearch, page?.content.map((product) => product.id)]);
+  const [selection, setSelection] = useState<{ scope: string; ids: string[] }>({ scope, ids: [] });
+  const [deleteSelection, setDeleteSelection] = useState<Product[] | null>(null);
+  if (selection.scope !== scope) setSelection({ scope, ids: [] });
+  const selectedIds = selection.scope === scope ? selection.ids : [];
+  const selectionDisabled = productsQuery.isFetching || productsQuery.isPlaceholderData || productsQuery.isError || !page?.content.length || filters.search !== debouncedSearch;
+  const allSelected = !!page?.content.length && selectedIds.length === page.content.length;
+
+  useEffect(() => {
+    if (page && !productsQuery.isPlaceholderData && !productsQuery.isFetching && filters.page > Math.max(0, page.totalPages - 1)) {
+      onChange({ ...filters, page: Math.max(0, page.totalPages - 1) });
+    }
+  }, [page, productsQuery.isPlaceholderData, productsQuery.isFetching, filters, onChange]);
+
+  function toggleSelection(id: string) {
+    setSelection({ scope, ids: selectedIds.includes(id) ? selectedIds.filter((selected) => selected !== id) : [...selectedIds, id] });
+  }
 
   function update(next: Partial<AdminTableFilters>) {
     onChange({ ...filters, ...next });
@@ -217,10 +235,28 @@ export function ProductsTable({
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p role="status" className="text-[13px] text-muted">{selectedIds.length} selecionado(s) nesta página</p>
+          {selectedIds.length > 0 ? <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setSelection({ scope, ids: [] })}>Limpar seleção</Button>
+            <Button variant="danger" disabled={selectionDisabled} onClick={() => setDeleteSelection(page!.content.filter((product) => selectedIds.includes(product.id)))}>
+              <TrashIcon className="h-4 w-4" />Excluir selecionados ({selectedIds.length})
+            </Button>
+          </div> : null}
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px] border-collapse text-left">
             <thead>
               <tr className="border-b border-line-soft text-xs font-bold text-muted">
+                <th className="w-11" scope="col">
+                  <label className="flex h-11 w-11 cursor-pointer items-center justify-center">
+                    <input type="checkbox" aria-label="Selecionar todos os produtos desta página"
+                      className="h-5 w-5 accent-violet" disabled={selectionDisabled} checked={allSelected}
+                      ref={(input) => { if (input) input.indeterminate = selectedIds.length > 0 && !allSelected; }}
+                      onChange={() => setSelection({ scope, ids: allSelected ? [] : page!.content.map((product) => product.id) })} />
+                  </label>
+                </th>
                 <th className="w-14 px-2 py-3" scope="col">
                   <span className="sr-only">Miniatura</span>
                 </th>
@@ -245,14 +281,14 @@ export function ProductsTable({
               {productsQuery.isPending ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={index} className="border-b border-line-soft">
-                    <td className="px-2 py-3" colSpan={6}>
+                    <td className="px-2 py-3" colSpan={7}>
                       <div className="h-11 animate-pulse rounded-xl bg-line-soft" />
                     </td>
                   </tr>
                 ))
               ) : productsQuery.isError ? (
                 <tr>
-                  <td colSpan={6} className="px-2 py-10 text-center">
+                  <td colSpan={7} className="px-2 py-10 text-center">
                     <p className="font-bold text-ink">
                       Não foi possível carregar os produtos.
                     </p>
@@ -271,8 +307,14 @@ export function ProductsTable({
                   return (
                     <tr
                       key={product.id}
-                      className="border-b border-line-soft last:border-0"
+                      className={`border-b border-line-soft last:border-0 ${selectedIds.includes(product.id) ? "bg-ground" : ""}`}
                     >
+                      <td>
+                        <label className="flex h-11 w-11 cursor-pointer items-center justify-center">
+                          <input type="checkbox" aria-label={`Selecionar ${product.name}`} className="h-5 w-5 accent-violet"
+                            disabled={selectionDisabled} checked={selectedIds.includes(product.id)} onChange={() => toggleSelection(product.id)} />
+                        </label>
+                      </td>
                       <td className="px-2 py-3">
                         <button
                           type="button"
@@ -340,7 +382,7 @@ export function ProductsTable({
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-2 py-10 text-center">
+                  <td colSpan={7} className="px-2 py-10 text-center">
                     <p className="font-bold text-ink">
                       Nenhum produto encontrado
                     </p>
@@ -365,7 +407,7 @@ export function ProductsTable({
                 variant="secondary"
                 size="icon"
                 onClick={() => update({ page: Math.max(0, filters.page - 1) })}
-                disabled={page.first}
+                disabled={page.first || productsQuery.isFetching}
                 aria-label="Página anterior"
               >
                 <ChevronLeftIcon className="h-4 w-4" />
@@ -374,7 +416,7 @@ export function ProductsTable({
                 variant="secondary"
                 size="icon"
                 onClick={() => update({ page: filters.page + 1 })}
-                disabled={page.last}
+                disabled={page.last || productsQuery.isFetching}
                 aria-label="Próxima página"
               >
                 <ChevronRightIcon className="h-4 w-4" />
@@ -383,6 +425,9 @@ export function ProductsTable({
           </div>
         ) : null}
       </div>
+      {deleteSelection ? <ProductsBulkDeleteModal products={deleteSelection}
+        onClose={() => { setDeleteSelection(null); setSelection({ scope, ids: [] }); }}
+        onDeleted={() => { setDeleteSelection(null); setSelection({ scope, ids: [] }); }} /> : null}
     </section>
   );
 }

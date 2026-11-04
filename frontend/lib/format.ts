@@ -15,12 +15,16 @@ export function formatCurrency(value: number | null | undefined): string {
   return currencyFormatter.format(value);
 }
 
-export function maskCurrencyInput(value: string): string {
-  const digits = value
-    .replace(/\D/g, "")
-    .replace(/^0+(?=\d)/, "")
-    .slice(0, 12);
-  return digits ? currencyFormatter.format(Number(digits) / 100) : "";
+export function maskCurrencyInput(value: string, previous = ""): string {
+  const deletingLastCharacter = previous && value === previous.slice(0, -1);
+  const rawDigits = deletingLastCharacter
+    ? previous.replace(/\D/g, "").slice(0, -1)
+    : value.replace(/\D/g, "");
+  const digits = rawDigits.replace(/^0+/, "").slice(0, 12);
+  if (digits) return currencyFormatter.format(Number(digits) / 100);
+  return rawDigits && !deletingLastCharacter
+    ? currencyFormatter.format(0)
+    : "";
 }
 
 export function formatCompactCurrency(
@@ -56,7 +60,7 @@ export function parseDecimalInput(value: string): number {
 
 export function formatPriceInput(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "";
-  return value.toFixed(2).replace(".", ",");
+  return currencyFormatter.format(value);
 }
 
 export function formatStock(value: number): string {

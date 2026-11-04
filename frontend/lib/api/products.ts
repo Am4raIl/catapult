@@ -93,6 +93,11 @@ export const productsApi = {
 
   remove: (id: UUID) => request<void>(`/products/${id}`, { method: "DELETE" }),
 
+  removeMany: (ids: UUID[]) => request<void>("/products/bulk-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  }),
+
   downloadPhoto: (photo: string) => fetchBlob(photo),
 
   photoKind: async (photo: string): Promise<PhotoKind> => {

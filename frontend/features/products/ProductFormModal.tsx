@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState, type DragEvent } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/Button";
 import { InputField, SelectField } from "@/components/FormField";
 import { ImageIcon } from "@/components/icons";
@@ -14,7 +14,7 @@ import { ApiError } from "@/lib/api/client";
 import { categoriesApi } from "@/lib/api/categories";
 import { productsApi } from "@/lib/api/products";
 import type { Product, ProductInput } from "@/lib/api/types";
-import { formatPriceInput, parseDecimalInput } from "@/lib/format";
+import { formatPriceInput, maskCurrencyInput, parseDecimalInput } from "@/lib/format";
 import {
   blobToFile,
   productFormSchema,
@@ -61,6 +61,7 @@ export function ProductFormModal({
   });
 
   const {
+    control,
     register,
     handleSubmit,
     setError,
@@ -374,20 +375,38 @@ export function ProductFormModal({
             {...register("stockQuantity")}
           />
 
-          <InputField
-            label="Preço"
-            inputMode="decimal"
-            placeholder="199,90"
-            error={errors.price?.message}
-            {...register("price")}
+          <Controller
+            name="price"
+            control={control}
+            render={({ field }) => (
+              <InputField
+                {...field}
+                label="Preço"
+                inputMode="numeric"
+                placeholder="R$ 0,00"
+                error={errors.price?.message}
+                onChange={(event) =>
+                  field.onChange(maskCurrencyInput(event.target.value, field.value))
+                }
+              />
+            )}
           />
 
-          <InputField
-            label="Custo (opcional)"
-            inputMode="decimal"
-            placeholder="120,00"
-            error={errors.costPrice?.message}
-            {...register("costPrice")}
+          <Controller
+            name="costPrice"
+            control={control}
+            render={({ field }) => (
+              <InputField
+                {...field}
+                label="Custo (opcional)"
+                inputMode="numeric"
+                placeholder="R$ 0,00"
+                error={errors.costPrice?.message}
+                onChange={(event) =>
+                  field.onChange(maskCurrencyInput(event.target.value, field.value))
+                }
+              />
+            )}
           />
 
           <label className="flex min-h-11 cursor-pointer items-center gap-2.5 sm:col-span-2">

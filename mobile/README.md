@@ -2,6 +2,37 @@
 
 Aplicativo Expo/React Native do catálogo público e da gestão de estoque do Catapult.
 
+## Expo Go por QR code, sem USB
+
+Coloque o computador e o celular na mesma rede Wi-Fi. Descubra o IP do computador com `ip -4 route get 1.1.1.1` (campo `src`) e substitua `SEU_IP_LOCAL` nos comandos abaixo. A rede precisa permitir que o celular acesse o computador.
+
+Em um terminal, na raiz do projeto, publique a API nesse IP e suba os containers:
+
+```bash
+cd /home/japones/Projetos/Catapult
+CATAPULT_API_BIND=SEU_IP_LOCAL podman-compose up -d --no-deps --force-recreate backend
+```
+
+Se banco e backend ainda não estiverem iniciados, execute `CATAPULT_API_BIND=SEU_IP_LOCAL podman-compose up -d db backend`. O Compose mantém a API restrita a `127.0.0.1` quando `CATAPULT_API_BIND` não é definido.
+
+Em `mobile/.env.local`, configure a mesma origem:
+
+```dotenv
+EXPO_PUBLIC_API_ORIGIN=http://SEU_IP_LOCAL:8080
+```
+
+Em outro terminal, inicie o Expo:
+
+```bash
+cd /home/japones/Projetos/Catapult/mobile
+npm install
+npx expo start --lan --clear
+```
+
+Escaneie o QR code com o Expo Go no Android, ou com a câmera no iPhone. Mantenha o terminal do Expo aberto. Se o IP do computador mudar, atualize `CATAPULT_API_BIND` e `.env.local`, recrie o backend e reinicie o Expo. O computador pode estar no cabo de rede, desde que o celular consiga alcançá-lo pela rede local.
+
+Se o celular não alcançar o computador pela rede local, consulte [docs.md](docs.md) para usar túneis para o Expo e para a API.
+
 ## Pré-requisitos
 
 - Node.js e npm;
@@ -62,3 +93,7 @@ npx eslint .
 npx tsc --noEmit
 npx expo-doctor
 ```
+
+## Paridade com a versão web
+
+Consulte [mobile-parity.md](docs/mobile-parity.md) para o design atualizado, a sacola com checkout idempotente, os indicadores de categorias e o roteiro de validação.

@@ -1,5 +1,7 @@
 # Rodando o Catapult Mobile
 
+Para usar o QR code na mesma rede Wi-Fi, siga primeiro o [README](README.md). O Compose atual aceita `CATAPULT_API_BIND=SEU_IP_LOCAL` para disponibilizar a API ao celular; nesse caso, `npx expo start --lan --clear` é suficiente.
+
 ## Backend
 
 Em um terminal, inicie a API:
@@ -41,7 +43,7 @@ cd /home/japones/Projetos/Catapult/mobile
 npx expo start --tunnel
 ```
 
-Escaneie o QR code exibido pelo Expo Go. Não use o QR code de uma execução comum (`npx expo start`), pois ele tenta acessar o computador pela rede local.
+Escaneie o QR code exibido pelo Expo Go. Este modo com túnel serve quando a rede local não permite que o celular acesse o computador.
 
 Após alterar `.env.local`, reinicie o Expo com cache limpo:
 

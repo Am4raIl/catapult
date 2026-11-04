@@ -1,4 +1,6 @@
-# Catapult — guia para o Claude implementar o aplicativo mobile
+# Catapult — guia para implementar o aplicativo mobile
+
+> Atualização: o frontend e o backend agora oferecem sacola, checkout idempotente e filtro `active` no servidor. Leia também `mobile-parity.md` para os contratos e fluxos adicionados à versão mobile.
 
 > Fonte de verdade para a implementação React Native com Expo. Este documento foi produzido a partir do backend atual e do projeto `mobile`. Ao trabalhar neste app, leia também `../AGENTS.md` e `../../backend/docs/api.md`. Em caso de divergência no contrato HTTP, o código do backend e `../../backend/docs/api.md` prevalecem.
 
@@ -27,7 +29,7 @@ O agente deve:
 6. não criar nem editar `ios/` ou `android/` manualmente;
 7. executar `npx expo lint`, `npx tsc --noEmit` e `npx expo-doctor` antes de concluir.
 
-Não invente recursos que o backend não oferece: não há cadastro, recuperação de senha, JWT, carrinho, pedidos, permissões por papel, operações em lote nem filtro server-side de produtos ativos.
+Não invente recursos que o backend não oferece: não há cadastro, recuperação de senha, JWT, pagamento online, permissões por papel ou operações em lote. Sacola e checkout idempotente estão disponíveis, conforme `mobile-parity.md`.
 
 ## 2. Escopo de telas
 
@@ -680,7 +682,7 @@ Ao mudar qualquer filtro, volte para `page=0`. Aplique debounce de 300–400 ms 
 
 Valide `min_price <= max_price` no app; o backend não valida essa relação. Um `stock_status` desconhecido é ignorado hoje, portanto use apenas o enum permitido. `has_photo` verifica a coluna do banco, não confirma se o arquivo físico ainda existe.
 
-O backend não filtra `active`. A vitrine pública deve remover `active: false` de cada página recebida. Isso pode fazer uma página visível ter menos itens e `totalElements` continuar incluindo inativos; documente essa limitação na implementação e continue buscando enquanto houver próxima página.
+O backend atual aceita `active=true` na listagem. A vitrine pública deve enviar esse filtro e manter a proteção visual contra `active: false`. A paginação e a contagem passam a considerar os produtos ativos.
 
 ### 9.2 Obter produto
 
@@ -850,6 +852,19 @@ DELETE /api/products/{id}
 ```
 
 Retorna `204`. Confirme com nome do produto e avise que registro e arquivo serão removidos sem possibilidade de desfazer. `404` pode ser tratado como “já removido” e seguido de refresh. `500` deve manter a tela aberta e oferecer retry.
+
+### 9.7.1 Excluir vários produtos
+
+```http
+POST /api/products/bulk-delete
+Content-Type: application/json
+
+{ "ids": ["d9562726-42f7-4d6f-b9ea-528d2bd78284", "d9562726-42f7-4d6f-b9ea-528d2bd78285"] }
+```
+
+Exige sessão e aceita de 1 a 100 UUIDs não nulos (`400` para seleção inválida). IDs repetidos são deduplicados. Retorna `204` sem corpo; se algum produto já não existir, retorna `404` sem excluir os demais. Registros são excluídos em uma transação, com limpeza dos arquivos após o commit; falhas nessa limpeza são registradas no backend.
+
+Na gestão de produtos, ofereça checkbox por item e seleção geral limitada à página atual, com estado parcial, contador e ação de limpar. Mudar busca, filtros ou página limpa a seleção. Bloqueie seleção sobre dados antigos durante carregamento. Confirme a exclusão com quantidade e nomes. Atualize admin, catálogo, categorias, sacola e dashboard após sucesso, corrigindo a página se necessário. No `404`, explique que nada mais foi removido e atualize a lista para uma nova seleção.
 
 ### 9.8 Foto ou PDF
 

@@ -1,64 +1,82 @@
-# 🚀 Catapult
+# 🚀 Catapult — Catálogo e Gestão de Estoque
 
-Catálogo de produtos e gestão de estoque com API REST, interface web e aplicativo mobile.
+<p align="center">
+  <img src="https://img.shields.io/badge/Java_21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21" />
+  <img src="https://img.shields.io/badge/Spring_Boot_4-6DB33F?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot 4" />
+  <img src="https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js 16" />
+  <img src="https://img.shields.io/badge/React_Native-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native" />
+  <img src="https://img.shields.io/badge/Expo_58-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo 58" />
+  <img src="https://img.shields.io/badge/MySQL_8.4-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL 8.4" />
+  <img src="https://img.shields.io/badge/Podman-892CA0?style=for-the-badge&logo=podman&logoColor=white" alt="Podman" />
+</p>
 
-## Funcionalidades
+---
 
-- Catálogo público com busca, filtros, categorias e detalhes de produtos.
-- Sacola e checkout com validação de estoque, cálculo no servidor e operação transacional.
-- Administração de produtos, categorias, imagens, estoque e indicadores.
-- Autenticação por sessão HTTP para operações administrativas.
-- Aplicativo mobile com catálogo, sacola, checkout e painel administrativo.
+O **Catapult** reúne uma vitrine de produtos, uma sacola de compras e a administração de catálogo e estoque. A API em **Spring Boot** atende a interface web em **Next.js** e o aplicativo **Expo/React Native**. O checkout valida preços e disponibilidade no servidor, registra a baixa de estoque e evita baixas duplicadas em tentativas repetidas. Não há integração com meios de pagamento.
 
-## Stack
+## ✨ Funcionalidades
 
-- **Backend:** Java 21, Spring Boot, Spring Security, JPA/Hibernate, Flyway e MySQL.
-- **Web:** Next.js, React, TypeScript, Tailwind CSS e TanStack Query.
-- **Mobile:** Expo, React Native, Expo Router e TypeScript.
-- **Infraestrutura:** Podman Compose ou Docker Compose.
+- **Vitrine:** busca, filtros, categorias, paginação e detalhes dos produtos.
+- **Sacola e checkout:** ajuste de quantidades, persistência local e confirmação transacional com validação de estoque.
+- **Administração:** login por sessão, cadastro e edição de produtos e categorias, upload de imagem/PDF, ajustes de estoque e exclusão em lote.
+- **Dashboard:** indicadores do catálogo, estoque e distribuição de produtos.
+- **Mobile:** catálogo, sacola, checkout e telas administrativas para Android e iOS.
 
-## Requisitos
+## 🛠️ Stack tecnológica
 
-Para execução com containers, instale Git, Podman e `podman-compose` — ou Docker Engine com Compose v2.
+| Camada | Tecnologias |
+| --- | --- |
+| API | Java 21, Spring Boot 4, Spring Security, JPA/Hibernate e Flyway |
+| Web | Next.js 16, React 19, TypeScript e Tailwind CSS 4 |
+| Mobile | Expo 58, React Native, Expo Router e TypeScript |
+| Dados e infraestrutura | MySQL 8.4, Podman Compose e volumes para banco e uploads |
 
-Para execução local, instale Java 21, Node.js 22, npm e MySQL/MariaDB.
+## 📁 Estrutura do projeto
 
-## Execução com containers
-
-Na raiz do projeto:
-
-```bash
-podman-compose up --build --force-recreate -d
+```text
+Catapult/
+├── compose.yaml     # MySQL, API e frontend web
+├── backend/         # API Spring Boot, migrações e testes
+├── frontend/        # Aplicação Next.js
+└── mobile/          # Aplicativo Expo/React Native
 ```
 
-Serviços disponíveis:
+## ✅ Pré-requisitos
 
-- Web: <http://localhost:3000>
-- API: <http://localhost:8080/api>
-- Login administrativo: <http://localhost:3000/login>
+- **Containers:** Podman e `podman-compose`.
+- **Execução local:** Java 21, Node.js 22, npm e MySQL/MariaDB.
+- **Mobile:** Expo Go compatível com o SDK 58 ou ambiente nativo configurado.
 
-Credenciais de desenvolvimento: `admin` / `admin`.
+## 🚀 Rodando pela primeira vez
 
-Comandos úteis:
+### Com Podman Compose
+
+Na raiz do repositório:
 
 ```bash
-podman-compose up -d       # inicia os serviços
-podman-compose logs -f     # acompanha os logs
-podman-compose down        # para os serviços e preserva os volumes
+podman-compose up --build -d
 ```
 
-Os volumes mantêm o banco e os arquivos enviados. Use `podman-compose down -v` somente se quiser removê-los.
+| Serviço | Endereço |
+| --- | --- |
+| Web | <http://localhost:3000> |
+| API | <http://localhost:8080/api> |
+| Login administrativo | <http://localhost:3000/login> |
 
-## Execução local
+No perfil `dev`, a API aplica as migrações e cria dados de demonstração quando o catálogo está vazio. Os volumes preservam banco e arquivos enviados; `podman-compose down` para os serviços sem apagá-los.
 
-Crie o banco `project` no MySQL/MariaDB e inicie a API:
+### Desenvolvimento local
+
+Crie o banco `project` no MySQL/MariaDB. A configuração local padrão da API usa `root` / `1234` em `localhost:3306`; ajuste `SPRING_DATASOURCE_USERNAME` e `SPRING_DATASOURCE_PASSWORD` se necessário.
+
+Para iniciar a API, a partir da raiz:
 
 ```bash
 cd backend
 ./mvnw spring-boot:run
 ```
 
-Em outro terminal, inicie o frontend:
+Em outro terminal, também a partir da raiz:
 
 ```bash
 cd frontend
@@ -66,60 +84,47 @@ npm ci
 npm run dev
 ```
 
-O frontend usa `http://localhost:8080` como destino padrão da API. Para alterar o endereço:
+### Aplicativo mobile
 
-```bash
-API_ORIGIN=http://ENDERECO_DA_API:8080 npm run dev
-```
-
-## Aplicativo mobile
-
-Configure o endereço da API em `mobile/.env.local`:
+Com a API em execução:
 
 ```bash
 cd mobile
 npm ci
 cp .env.example .env.local
-npx expo start --lan --clear
 ```
 
-Defina `EXPO_PUBLIC_API_ORIGIN` com a origem da API, sem o sufixo `/api`. Em um telefone físico, use o IP do computador; no Android Emulator padrão, use `http://10.0.2.2:8080`.
+Em `mobile/.env.local`, configure `EXPO_PUBLIC_API_ORIGIN` com a origem da API **sem `/api`**: use o IP do computador para um telefone físico ou `http://10.0.2.2:8080` no Android Emulator. Depois, execute `npx expo start --lan --clear` em `mobile/`. Para acessar a API do Compose pelo telefone, execute `CATAPULT_API_BIND=SEU_IP_LOCAL podman-compose up -d` na raiz do projeto.
 
-## API
+## 🔑 Credenciais de demonstração
 
-A API usa o prefixo `/api` e autenticação por cookie de sessão.
-
-Principais recursos:
-
-| Método | Rota | Finalidade |
+| Usuário | Senha | Ambiente |
 | --- | --- | --- |
-| `POST` | `/api/login` | Inicia uma sessão administrativa. |
-| `GET` | `/api/products` | Lista produtos públicos. |
-| `POST`, `PUT`, `DELETE` | `/api/products` | Gerencia produtos autenticados. |
-| `POST` | `/api/products/bulk-delete` | Exclui vários produtos autenticados. |
-| `GET`, `POST`, `PUT`, `DELETE` | `/api/categories` | Consulta e gerencia categorias. |
-| `POST` | `/api/checkout` | Finaliza a sacola e atualiza o estoque. |
+| `admin` | `admin` | Perfil `dev` |
 
-Os contratos completos estão em [`backend/docs/api.md`](backend/docs/api.md).
+Altere as credenciais antes de usar o projeto fora do ambiente de desenvolvimento.
 
-## Testes e verificações
+## 📡 Principais endpoints
+
+| Método | Rota | Acesso |
+| --- | --- | --- |
+| `POST` | `/api/login` | Público |
+| `GET` | `/api/products`, `/api/products/{id}` | Público |
+| `POST / PUT / DELETE` | `/api/products`, `/api/products/{id}` | Admin |
+| `PATCH` | `/api/products/{id}/stock` | Admin |
+| `POST` | `/api/products/bulk-delete` | Admin |
+| `GET / POST / PUT / DELETE` | `/api/categories`, `/api/categories/{id}` | Consulta pública; alterações admin |
+| `GET` | `/api/dashboard/summary` | Admin |
+| `POST` | `/api/checkout` | Público |
+
+A autenticação administrativa usa cookie de sessão. O contrato completo está em [backend/docs/api.md](backend/docs/api.md).
+
+## 🧪 Verificações
 
 ```bash
-# Frontend
-cd frontend && npm run lint && npx tsc --noEmit
-
-# Mobile
-cd mobile && npm run lint && npx tsc --noEmit
-
-# Backend
-cd backend && ./mvnw test
+(cd frontend && npm run lint && npx tsc --noEmit)
+(cd mobile && npm run lint && npx tsc --noEmit)
+(cd backend && ./mvnw test)
 ```
 
-## Estrutura
-
-```text
-backend/   API Spring Boot, migrações e testes
-frontend/  Interface web Next.js
-mobile/    Aplicativo Expo/React Native
-compose.yaml
-```
+Os testes de integração do backend exigem bancos MySQL de teste separados, configurados nas classes de teste.

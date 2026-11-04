@@ -14,6 +14,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -24,6 +28,7 @@ import java.util.UUID;
 
 @Service
 public class ProductService {
+    private static final Logger logger = LoggerFactory.getLogger(ProductService.class);
     private final ProductRepository repository;
     private final CategoryService categoryService;
     private final ImageStorageService imageStorageService;
@@ -189,6 +194,30 @@ public class ProductService {
         repository.delete(produto);
         repository.flush();
         imageStorageService.delete(image);
+    }
+
+    @Transactional
+    public void deleteMany(List<UUID> ids) {
+        // Match checkout's lock order and validate the entire selection before deleting.
+        List<Product> products = ids.stream().distinct().sorted()
+                .map(this::findForUpdate).toList();
+        List<String> images = products.stream().map(Product::getPhoto)
+                .filter(image -> image != null && !image.isBlank()).distinct().toList();
+        repository.deleteAll(products);
+        repository.flush();
+        // Files must survive a rollback. Cleanup runs only after the database commits.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                for (String image : images) {
+                    try {
+                        imageStorageService.delete(image);
+                    } catch (RuntimeException error) {
+                        logger.warn("Não foi possível remover o arquivo {} após excluir produtos", image, error);
+                    }
+                }
+            }
+        });
     }
 
     public Resource loadImage(UUID id) {

@@ -44,6 +44,7 @@ Características gerais:
 | `PUT` | `/api/products/{id}` | Sim | `200` produto atualizado |
 | `PATCH` | `/api/products/{id}/stock` | Sim | `200` produto atualizado |
 | `DELETE` | `/api/products/{id}` | Sim | `204` sem corpo |
+| `POST` | `/api/products/bulk-delete` | Sim | `204` sem corpo |
 | `GET` | `/api/dashboard/summary` | Sim | `200` indicadores |
 | `GET` | `/api/dashboard/products-by-category` | Sim | `200` agrupamento |
 | `GET` | `/api/dashboard/price-ranges` | Sim | `200` faixas de preço |
@@ -512,6 +513,22 @@ Cookie: JSESSIONID=...
 ```
 
 Exclui registro e depois arquivo associado. Retorna `204`, `401`, `404`, ou possível `500` se o arquivo não puder ser removido.
+
+### 6.7.1 Excluir vários produtos
+
+```http
+POST /api/products/bulk-delete
+Content-Type: application/json
+Cookie: JSESSIONID=...
+
+{ "ids": ["d9562726-42f7-4d6f-b9ea-528d2bd78284", "d9562726-42f7-4d6f-b9ea-528d2bd78285"] }
+```
+
+Aceita de 1 a 100 UUIDs não nulos. IDs repetidos são processados uma única vez. Exige sessão (`401`); lista ausente/vazia, UUID inválido, item nulo ou mais de 100 IDs retorna `400`.
+
+A exclusão dos registros é transacional: todos os produtos são bloqueados e verificados antes de excluir. Se qualquer ID não existir, retorna `404` e nenhum produto é excluído. Sucesso retorna `204`, sem JSON. Os arquivos são removidos após o commit; falhas de limpeza são registradas no log, sem reverter uma exclusão já confirmada.
+
+No admin web e mobile, o checkbox geral seleciona somente os produtos da página visível, incluindo inativos. Mudar página, busca ou filtros limpa a seleção. A confirmação informa a quantidade e os nomes; após sucesso, listas, categorias e indicadores são atualizados e a paginação é ajustada se a última página desaparecer.
 
 ### 6.8 Foto/PDF
 

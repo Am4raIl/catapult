@@ -1,6 +1,7 @@
 package japa.project.controller;
 
 import jakarta.validation.Valid;
+import japa.project.dto.BulkDeleteProductsRequestDTO;
 import japa.project.dto.ProductRequestDTO;
 import japa.project.dto.ProductResponseDTO;
 import japa.project.dto.UpdateStockRequestDTO;
@@ -114,6 +115,12 @@ public class ProductController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> destroy(@PathVariable UUID id) {
         service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/bulk-delete", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> destroyMany(@Valid @RequestBody BulkDeleteProductsRequestDTO request) {
+        service.deleteMany(request.ids());
         return ResponseEntity.noContent().build();
     }
 }
